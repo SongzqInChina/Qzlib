@@ -2,7 +2,7 @@ from . import \
     (
     database,
     databaseX,
-    entrypt,
+    encrypt,
     file,
     filex,
     json,

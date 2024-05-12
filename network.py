@@ -6,7 +6,7 @@ from typing import Iterable, Any, Literal
 
 import ping3
 
-from . import entrypt, typefunc
+from . import encrypt, typefunc
 from . import thread as threading
 from .json import *
 
