@@ -1,14 +1,17 @@
 import hashlib
+import queue
 import re
 import socket
-import struct
-from typing import Iterable, Any, Literal
+import time
+from typing import (
+    Callable
+)
 
 import ping3
 
-from . import encrypt, typefunc
-from . import thread as threading
-from .json import *
+from . import qstruct
+from . import thread as libthreading
+from . import typefunc
 
 
 def _ipa():
@@ -252,82 +255,61 @@ def toname(ip):
         return None
 
 
-def pack(data):
-    # --------------------
-    #   8   |   32  |   16  |   64     | *
-    # 长度报文| sha256 | md5  |  sha512 |数据
-    data_size = struct.pack("<Q", len(data))  # 使用小端序8个字节无符号整数表示数据长度
-    sha256 = hashlib.sha256(data).digest()  # 直接获取二进制哈希值，无需hexdigest()
-    md5 = hashlib.md5(data).digest()
-    sha512 = hashlib.sha512(data).digest()
-    data_bytes = data_size + sha256 + md5 + sha512 + data
-    return data_bytes
+def is_simple_request(header):
+    if not isinstance(header, dict):
+        return False
+    for k in ["type", "header", "hash"]:
+        if k not in header:
+            return False
+    if header["hash"] != hashlib.sha256(header["header"].encode()).hexdigest():
+        return False
+    return True
 
 
-def unpack(data):
-    data_size = struct.unpack("<Q", data[:8])[0]  # 解码数据长度
-    offset = typefunc.index_offset.offset(data)
-    offset.start = 8
-    sha256 = offset.offset(32)
-    md5 = offset.offset(16)
-    sha512 = offset.offset(64)
-    o_data = offset.offset(data_size)
-    return o_data, sha256, md5, sha512, data_size
+def create_simple_request(_type="Get-Request", header=None):
+    request = {
+        "type": _type,
+        "header": header,
+        "hash": hashlib.sha256(header.encode()).hexdigest()
+    }
+    return request
 
 
-def unpacks(__data: bytes):
-    data = typefunc.index_offset.offset(__data)
-
-    hash_size = 32 + 16 + 64
-    head_size = 8
-
-    result = []
-
-    while not data.isend():
-        data_size = struct.unpack("<Q", data.n_offset(head_size))[0]
-        data_bytes = data.offset(head_size + hash_size + data_size)
-        unpacking_data = unpack(data_bytes)
-        result.append({
-            "data": unpacking_data[0],
-            "sha256": unpacking_data[1],
-            "md5": unpacking_data[2],
-            "sha512": unpacking_data[3],
-            "lenght": data_size
-        })
-    return result  # type: list[dict[Literal["data", "sha256", "md5", "sha512", "lenght"]]]
-
-
-def unpackskey(__data, *keys):
-    unpacking_data = unpacks(__data)
-    for item in range(len(unpacking_data)):
-        item_dict = ()
-        for key in keys:
-            item_dict += (unpacking_data[item][key],)
-        yield item_dict
-
-
-def _packs(data_list: Iterable[bytes]):
-    for data in data_list:
-        yield pack(data)
-
-
-def packs(data_list: Iterable[bytes]):
-    return b''.join(_packs(data_list))
+def create_simple_answer(_type="Get-Answer", header=..., _answer=...):
+    answer = {
+        "type": _type,
+        "header": header,
+        "data": _answer,
+        "hash": hashlib.sha256(header.encode()).hexdigest()
+    }
+    return answer
 
 
 class SimpleSocket:
-    def __init__(self):
+    def __init__(self, s: socket.socket | object | None = None):
+        self.lock_event = None
         self.thread = None
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if s is None:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        elif isinstance(s, self.__class__):
+            self.sock = s.sock
+
         self.lasterror = None
-        self._buffer = []
-        self.lock = threading.Lock()
+        self._buffer = queue.Queue(256)
 
     def set(self, sock, start_server=True):
         self.sock.close()
         self.sock = sock  # type: socket.socket
         if start_server:
             self.start_server()
+
+    def close(self):
+        self.stop_server()
+        try:
+            self.sock.shutdown(socket.SHUT_RDWR)
+        except OSError as e:
+            self.lasterror = e
+        self.sock.close()
 
     def getlasterror(self):
         e = self.lasterror
@@ -337,7 +319,7 @@ class SimpleSocket:
     def settimeout(self, timeout):
         self.sock.settimeout(timeout)
 
-    def connect(self, host, port):
+    def connect(self, host, port, timeout=None):
         try:
             self.sock.connect((host, port))
             self.getlasterror()
@@ -381,8 +363,7 @@ class SimpleSocket:
         return conn_simple, addr
 
     def write(self, data):
-        data_bytes = pickle_simple.encode(data).encode()
-        packing_data_bytes = pack(data_bytes)
+        packing_data_bytes = qstruct.simple_jsonpickle_pack(data)
 
         try:
             self.sock.sendall(packing_data_bytes)
@@ -392,18 +373,16 @@ class SimpleSocket:
             self.lasterror = e
             return False
 
-    def _read_loop(self):
+    def _read_loop(self, StopEvent):
         while True:
-            try:
-                data = self._read()
-                if data is not None:
-                    for item in data:
-                        self.lock.acquire()
-                        self._buffer.append(item['data'])
-                        self.lock.release()
-            except Exception as e:
-                self._thread_lasterror = e
-                print(e)
+            if StopEvent.is_set():
+                print("Return")
+                return
+
+            data = self._read()
+            if data is not None:
+                for item in data:
+                    self._buffer.put(item)
 
     def _read(self):
         every_data = b""
@@ -420,22 +399,191 @@ class SimpleSocket:
         if every_data == b'':
             return None
 
-        unpacking_datas = unpacks(every_data)
+        unpacking_datas = qstruct.simple_jsonpickle_unpacks(every_data)
         return unpacking_datas
 
-    def read(self):
-        self.lock.acquire()
-        data = self._buffer.pop(0) if typefunc.list.hasindex(self._buffer, 0) else None  # type: bytes | None
-        self.lock.release()
-        if data is not None:
-            data_str = data.decode()
-            original_data = pickle_simple.decode(data_str)
-            return original_data
+    def read(self, timeout=None):
+        data = self._buffer.get(timeout=timeout)
         return data
 
     def start_server(self):
-        if self.thread is not None:
-            raise "Server is running already" from 0
-        self.thread = threading.get_new_thread(self._read_loop)
-        self.thread.setDaemon(True)
-        self.thread.start()
+        self.lock_event = libthreading.threading.Event()
+        self.thread = libthreading.start_new_thread(self._read_loop, self.lock_event)
+
+    def stop_server(self):
+        if self.thread:
+            self.lock_event.set()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+
+class RemotePost:  # RemotePost 使用一问一答形式发送数据
+    class _Post:
+        def __init__(self, **data):
+            self.data = data
+
+        def get(self, key):
+            return self.data.get(key)
+
+        def gets(self, keys):
+            return [self.data.get(key) for key in keys]
+
+        def cmp(self, key, value):
+            return self.data.get(key) == value
+
+        def __iter__(self):
+            return self.data.keys()
+
+    def __init__(self, sp_socket: SimpleSocket):
+        self.socket = sp_socket
+        # 优先度
+        self.priority = None
+        # 回合
+        self.round = 0
+
+    def server(self, port):
+        self.socket.bindport(port)
+        self.socket.listen()
+        self.socket.start_server()
+
+    def connect(self, remote_host, remote_port, timeout=None):
+        """
+        connect a RemotePost Server and return True if success
+        :param remote_port: RemotePost Server host
+        :param remote_host: RemotePost Server port
+        :param timeout: socket.connect(..., ..., timeout=timeout)
+        :return: bool
+        """
+        self.priority = 1  # 客户端优先（自己优先）
+        return self.socket.connect(remote_host, remote_port, timeout)
+
+    # 接收连接函数
+    def accept(self):
+        """
+        accept the connect request and reset self
+        :return: None
+        """
+        self.priority = 0  # 客户端优先（对方优先）
+        sock = self.socket.accept()[0]
+        self.socket.close()
+        self.socket = sock
+
+    def send(self, **data):  # 发送报文：字典
+        """
+        if NOT your round, function throw Exception: "Not your round"
+        :param data: dict post
+        :return: None
+        :raise: Exception
+        """
+        if self.round % 2 == self.priority:
+            self.round += 1
+            self.socket.write(data)
+        else:
+            raise Exception("Not your round")
+
+    def get(self):
+        if self.isme():
+            return None
+        self.round += 1
+        x = self.socket.read()
+        try:
+            while isinstance(x, dict):
+                x = self.socket.read(5)
+        except queue.Empty:
+            return None
+        except socket.timeout:
+            return None
+        return self._Post(**x)
+
+    def can_send(self):
+        return self.round % 2 == self.priority
+
+    def isme(self):
+        return self.round % 2 == self.priority
+
+    def close(self):
+        self.socket.close()
+
+
+class RemoteCallServer:
+    def __init__(self, sp_socket: RemotePost):
+        self.lock_event = None
+        self.thread = None
+        self.socket = sp_socket
+        self.functions = {}  # type: dict[str, Callable]
+
+    def server(self, port):
+        self.socket.server(port)
+
+    def link(self, func):
+        if not typefunc.func.is_callable(func):
+            raise Exception("Func param must be callable")
+        func_name = func.__name__
+        self.functions[func_name] = func
+
+    def unlink(self, func):
+        type_ = type(func)
+        if type_ == str:
+            return self.functions.pop(type_)
+        if typefunc.func.is_callable(func):
+            return self.functions.pop(func.__name__)
+        raise Exception("Func param must be str or a func")
+
+    def _post_loop(self, StopEvent):
+        while True:
+            if StopEvent.is_set():
+                return
+            post = self.socket.get()
+            if post is not None:
+                if "fc_name" not in post or "fc_args" not in post or "fc_kwargs" not in post:
+                    continue  # error call_request
+                fc_name, fc_args, fc_kwargs = post.gets(["fc_name", "fc_args", "fc_kwargs"])
+                if fc_name not in self.functions:  # function not found
+                    self.socket.send(
+                        fc_name=fc_name, time=time.time(),
+                        result=("error", RuntimeError("Function not found"))
+                    )  # send error
+                func = self.functions[fc_name]  # get function
+                try:
+                    result = func(*fc_args, **fc_kwargs)  # call function
+                    self.socket.send(fc_name=fc_name, time=time.time(), result=("ok", result))  # send result
+                except Exception as e:
+                    self.socket.send(fc_name=fc_name, time=time.time(), result=("error", e))  # send error
+
+    def server_start(self):
+        self.lock_event = libthreading.threading.Event()
+        self.thread = libthreading.start_new_thread(self._post_loop, self.lock_event)
+
+    def server_stop(self):
+        if self.thread:
+            self.lock_event.set()
+
+    def close(self):
+        self.server_stop()
+        self.socket.close()
+
+
+class RemoteCallClient:
+    def __init__(self, remote_host, remote_port, timeout=None):
+        self.socket = RemotePost(SimpleSocket())
+        try:
+            self.socket.connect(remote_host, remote_port, timeout)
+        except socket.timeout:
+            raise Exception("Connect timeout")
+
+    def _request(self, fc_name, fc_args, fc_kwargs):
+        self.socket.send(fc_name=fc_name, fc_args=fc_args, fc_kwargs=fc_kwargs)
+        answer = self.socket.get()
+        if answer is None:
+            raise Exception("No answer")
+        return answer.gets(["time", "result"])
+
+    def request(self, fc_name, *fc_args, **fc_kwargs):
+        return self._request(fc_name, fc_args, fc_kwargs)
+
+    def close(self):
+        self.socket.close()

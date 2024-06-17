@@ -336,6 +336,15 @@ def JsonClear(file):
 
 
 def JsonEntrypt(file, key, iv=None):
+    """
+    如果你希望更智能的加密JSON，可以导入 **SzQlib.encrypt**
+
+
+    :param file:
+    :param key:
+    :param iv:
+    :return:
+    """
     from .encrypt import aes_encrypt
     data = JsonGet(file)
     JsonClear(file)

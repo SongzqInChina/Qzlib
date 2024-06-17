@@ -32,10 +32,6 @@ def rmdir(path):
     os.rmdir(path)
 
 
-def rmdirs(path):
-    os.removedirs(path)
-
-
 def remove(path):
     os.remove(path)
 
@@ -69,10 +65,10 @@ def scandir_ls(path):
     return list(scandir(path))
 
 
-def rmdirsX(path):
+def rmdirs(path):
     for i in scandir(path):
         if i.is_dir():
-            rmdirsX(i.path)
+            rmdirs(i.path)
         else:
             remove(i.path)
     rmdir(path)
@@ -84,6 +80,10 @@ def rmfile(file):
 
 def abspath(path):
     return os.path.abspath(path)
+
+
+def isabspath(path):
+    return os.path.isabs(path)
 
 
 def split(path):
@@ -104,8 +104,8 @@ def process(path) -> str:
 
 
 def _tree(folder) -> dict:
-    now_dic = {}
-
+    f_dic = {folder:{}}
+    now_dic = f_dic[folder]
     folder = path_to(folder)
 
     if isfile(folder):
@@ -116,11 +116,11 @@ def _tree(folder) -> dict:
                 now_dic[i.path] = tree(i.path)
             else:
                 now_dic[i.path] = os.path.getsize(i.path)
-    return now_dic
+    return f_dic
 
 
 def tree(folder):
     t = _tree(folder)
-    return {folder: t}
+    return t
 
 

@@ -15,7 +15,6 @@ from . import \
     process,
     processx,
     reg,
-    runtime,
     system,
     shell,
     time,
@@ -24,6 +23,8 @@ from . import \
     window,
     qstruct,
     sample,
+    FileSystemMapper,
+    plugins_loader,
 )
 dc = """
 我把SzQlib模块分的很细：
@@ -51,7 +52,6 @@ dc = """
     - process.py
     - processx.py
     - reg.py
-    - runtime.py
     - shell.py
     - system.py
     - thread.py

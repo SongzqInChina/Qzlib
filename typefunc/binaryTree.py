@@ -64,7 +64,7 @@ class BST(Tree):
                 self.right = self.__class__(parent=self)
 
         def delete(self, value):
-            if self.value == value:
+            if self.cmp(value, self.value):
                 if self.left and self.right:
                     # 找到右子树中最小值
                     min_node = self.right.find_min()
@@ -99,9 +99,21 @@ class BST(Tree):
         def __bool__(self):
             return self.value is not None
 
+        def __iter__(self):
+            # zhongxu
+            if self.left:
+                yield from self.left
+            yield self.value
+            if self.right:
+                yield from self.right
+
     # --------------------------------------------------------------------------------
     def __init__(self):
         self._binarytree = self._Node()
+
+    @property
+    def binarytree(self):
+        return self._binarytree
 
     def add(self, value):
         self._binarytree.insert(value)
@@ -126,6 +138,13 @@ class BST(Tree):
     @property
     def value(self):
         return self._binarytree.value
+
+    def query(self, value):
+        return self._binarytree.query(value)
+
+    def __iter__(self):
+        for i in self._binarytree:
+            yield i
 
     def __bool__(self):
         return bool(self._binarytree.value is not None)

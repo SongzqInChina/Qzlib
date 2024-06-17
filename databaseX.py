@@ -1,45 +1,32 @@
 import hashlib
 
+from . import typefunc
 from .filex import JsonFileOpen, JsonGet, JsonSet
+from .encrypt import EncryptJsonOpen
 from .json import *
 from .libcon import *
 from .path import *
 
 
 class _Database_Index:
-    def __init__(self, mro_path):
-        self._path = mro_path
-        self._index = JsonFileOpen(path_to(mro_path, "index.json"))
+    def __init__(self):
+        self.index = typefunc.binaryTree.BST()
+        self.index.binarytree.cmp=lambda a, b: a[0] < b[0]
 
-    def processing(self, data: dict):
-        # data 是一个字典
-        keys = list(data.keys())
-        keys.sort()
-        items = [(k, data[k]) for k in keys]
-        items = map(lambda tp: getkhash(str(tp)), items)  # 获取 k 的 hash
-        res_str = '-'.join(items)  # 拼接成字符串
-        return res_str
+    def add(self, key, value):
+        self.index.add((key, value))
 
-    def add(self, data: dict, file: str):
-        res_str = self.processing(data)
+    def delete(self, key):
+        try:
+            self.index.delete((key, 0))
+        except ValueError as e:
+            raise ValueError("key not in index") from e
 
-        self._index[res_str] = file  # 添加到索引中
+    def query(self, key):
+        return self.index.query((key, 0))
 
-    def remove(self, data: dict):
-        res_str = self.processing(data)
-
-        del self._index[res_str]  # 删除
-
-    def get(self, mro, data: dict):
-        res_str = self.processing(data)
-
-        return self._index.get(res_str, None)  # 正常应该是一个文件名
-
-    def inner(self, index):
-        return
-
-
-
+    def isin(self, key):
+        return self.index.query(key) is not None
 
 
 def getkstr(obj):
@@ -67,7 +54,7 @@ class Database:
     def data(self):
         return self._data
 
-    def __init__(self, _dir):
+    def __init__(self, _dir, key, iv):
         self._dir = _dir
         if not isdir(self._dir):
             mkdirs(path_to(self._dir, "data"))
@@ -76,7 +63,17 @@ class Database:
 
         self._config = path_to(self._dir, "config.json")
         self._data = path_to(self._dir, "data")
-        self._io = JsonFileOpen(self.config)
+        self._io = EncryptJsonOpen(self.config, key, iv)
+
+        # 添加索引值以提高查询效率
+        self._index = {}
+        for dir in listdir(self.data):
+            if isdir(path_to(self.data, dir)):
+                self._index[dir] = _Database_Index()
+                for file in listdir(path_to(self.data, dir)):
+                    if isfile(path_to(self.data, dir, file)):
+                        file_data = JsonGet(path_to(self.data, dir, file))
+                        self._index[dir].add()
 
     def setname(self, name):
         self._io['name'] = name
@@ -130,7 +127,7 @@ class Database:
         if key is None:
             raise ValueError("The 'key' parameter must be provided and cannot be None.")
         if Type == DBX_FUNC_TYPE_MRO:
-            return MroFunc(self, key)
+            return MroFunc(self, key, self._index[key])
         elif Type == DBX_FUNC_TYPE_GET:  # TODO: we don't finish this func now
             raise "We don't finish this func now"
         else:
@@ -138,12 +135,11 @@ class Database:
 
 
 class MroFunc:
-    def __init__(self, dbclass: Database, mro):
+    def __init__(self, dbclass: Database, mro, index):
         self._dir = path_to(dbclass.data, mro)
         self._config = path_to(dbclass.data, mro, "config.json")
         self._template = JsonFileOpen(self._config).get('template', mktemplate())
-
-        self._index = _Database_Index(dbclass.data)
+        self._index = index
 
     def settemplate(self, template, update=True):
         self._template = template
@@ -160,10 +156,10 @@ class MroFunc:
             data = JsonGet(file_path, 'data')
             if data is None:
                 continue
-            if not cx.Library.typefunc.template.sub(template, data):
+            if not typefunc.template.sub(template, data):
                 with JsonFileOpen(file_path) as json_file:
                     json_file.clear()
-                    sorted_data = cx.Library.typefunc.template.sort(data, template)
+                    sorted_data = typefunc.template.sort(data, template)
                     json_file.set('data', sorted_data)
 
         return self
@@ -194,4 +190,4 @@ class MroFunc:
 
 
 def mktemplate(**dic):
-    return cx.Library.typefunc.template.Template(**dic)
+    return typefunc.template.Template(**dic)

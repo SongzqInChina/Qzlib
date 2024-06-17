@@ -24,7 +24,7 @@ def aes_decrypt(ciphertext, key, iv):
 
 
 def _pkcs7_pad(data: bytes, block_size: int) -> bytes:
-    if len(data) == block_size:
+    if len(data) >= block_size:
         return data
     padding_length = block_size - len(data) % block_size
     padding = bytes([padding_length]) * padding_length
@@ -64,18 +64,18 @@ def split(text, size=16):
         return [text[i:i + size] for i in range(0, len(text), size)]
     res_lenght = ((len(text) // size) + 1) * size
     add_lenght = res_lenght - len(text)
-    text += b"0" * add_lenght
-    ls = [text[i:i + size] for i in range(0, res_lenght, size)]
-    ls[-1] = ls[-1][:-add_lenght]
+    text = pad(text, res_lenght)
+    ls = split(text, size)
+    ls[-1] = ls[-1][:add_lenght]
     # print(ls)
     return ls
 
 
-def pad(text, size=16):
+def pad(text: bytes, size=16):
     return _pkcs7_pad(text, size)
 
 
-def unpad(text, size=16):
+def unpad(text: bytes, size=16):
     return _pkcs7_unpad(text, size)
 
 
@@ -202,5 +202,5 @@ class _entryptJsonFile:
         self.close()
 
 
-def EntryptJsonOpen(filename, key, iv):
+def EncryptJsonOpen(filename, key, iv):
     return _entryptJsonFile(filename, key, iv)

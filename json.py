@@ -1,4 +1,6 @@
 import json
+from typing import Any
+
 import jsonpickle
 
 """
@@ -18,11 +20,11 @@ class json_simple:
 
 class pickle_simple:
     @staticmethod
-    def encode(data):
+    def encode(data) -> str:
         return jsonpickle.encode(data)
 
     @staticmethod
-    def decode(data):
+    def decode(data) -> Any:
         return jsonpickle.decode(data)
 
 

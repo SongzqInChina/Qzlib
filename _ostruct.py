@@ -1,4 +1,9 @@
+import copy
 import struct
+
+from . import encrypt
+from . import typefunc
+from .json import pickle_simple
 
 
 def pack(data):
@@ -31,8 +36,6 @@ def pack(data):
     """
     data_type = type(data)
     if data_type == int:
-        if data > 0:
-            return struct.pack("<q", data)
         return struct.pack("<q", data)
     elif data_type == float:
         return struct.pack("<d", data)
@@ -59,3 +62,72 @@ def unpack(data_type, data):
         return struct.unpack("<?", data)[0]
     else:
         raise TypeError("Unsupported data type: {}".format(data_type))
+
+
+def pack_anylenght(data, lenght=16, max_lenght=False):
+    data_type = type(data)
+    if data_type == str:
+        return encrypt.pad(data.encode(), lenght)
+    if data_type == int:
+        x = copy.copy(data)
+        data_bytes = typefunc.int_to_bytes(x, lenght, "little")
+        if max_lenght:
+            return typefunc.get_vaild_data(data_bytes)
+        return data_bytes
+    if data_type == bytes:
+        if len(data) <= max_lenght:
+            return data
+        return encrypt.pad(data, lenght)
+    if data_type == float:
+        int_num, float_int_num = tuple(map(int, str(data).split('.')[:2]))
+
+        int_bytes = pack_anylenght(int_num, 2048, True)
+        float_bytes = pack_anylenght(float_int_num, 2048, True)
+
+        try:
+            int_len_bytes = pack_anylenght(len(int_bytes), 8)  # 获取int长度
+        except OverflowError as e:
+            raise OverflowError(f"result's 'int_len_byes' is too long, cannot finish package(you can split the data)")
+
+        result = int_len_bytes + int_bytes + float_bytes
+
+        if len(result) > lenght:
+            raise OverflowError(f"result is too long, cannot finish package(try to use {len(int_bytes) + len(float_bytes) + 8})")
+
+        if max_lenght:
+            return result
+        else:
+            print(result)
+            return encrypt.pad(result, lenght)
+
+
+def unpack_anylenght(data_type, data: bytes, data_lenght, max_lenght=False):
+    if not max_lenght and len(data) != data_lenght:
+        raise RuntimeError("data length is not equal to data_lenght({} and {})".format(len(data), data_lenght))
+    if len(data) == 0:
+        return None
+
+    if data_type == int:
+        data_int = typefunc.bytes_to_int(data)
+        return data_int
+
+    if data_type == str:
+        return encrypt.unpad(data).decode()
+
+    if data_type == bytes:
+        if max_lenght:
+            return data
+        return encrypt.unpad(data)
+
+    if data_type == float:
+        data_offset = typefunc.index_offset.Offset(encrypt.unpad(data, data_lenght))
+        print(encrypt.unpad(data, data_lenght))
+        int_lenght = unpack_anylenght(int, data_offset.offset(8), 2048, True)
+        print("Int Lenght:", int_lenght)
+
+        int_data = unpack_anylenght(int, data_offset.offset(int_lenght), 2048, True)
+        print("Int Data:", int_data)
+        float_data = unpack_anylenght(int, data_offset.surplus(bytes), 2048, True)
+        print("Float Data:", float_data)
+
+        return eval("{}.{}".format(int_data, float_data))

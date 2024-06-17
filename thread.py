@@ -1,4 +1,4 @@
-import threading
+import threading as threading
 
 
 def get_new_thread(function, args=(), kwargs={}):

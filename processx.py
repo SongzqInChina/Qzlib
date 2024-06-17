@@ -1,5 +1,4 @@
 import os
-import random
 import time
 
 import psutil
@@ -84,69 +83,6 @@ class Process(Xfunc):
     @staticmethod
     def myClass():
         return CProcess(Process.myPid())
-
-
-class Runtime(Xfunc):
-    _Key = None
-
-    @classmethod
-    def _flash_key(cls):
-        cls._Key = ()
-        for i in range(9):
-            cls._Key += (random.randint(0, 100),)
-
-    def __init__(self, a, b, c, d, e, f, g, h, i, /):
-        if (a, b, c, d, e, f, g, h, i) \
-                != \
-                self._Key:
-            raise TypeError("Can't instantiate abstract class Callable with abstract method __call__")
-
-        self._c = Process.myClass()
-
-    @property
-    def pid(self):
-        return self._c.pid
-
-    def cpu_count(self):
-        return os.cpu_count()
-
-    def num_threads(self):
-        return self._c.num_threads()
-
-    def cpu_percent(self):
-        return self._c.cpu_percent()
-
-    def memory_percent(self):
-        return self._c.memory_percent()
-
-    def memory_info(self):
-        return self._c.memory_info()
-
-    def memory_full_info(self):
-        return self._c.memory_full_info()
-
-    def kill(self):
-        self._c.kill()
-
-    def exit(self, code):
-        exit(code)
-
-    def environ(self):
-        return self._c.environ()
-
-    def cmdline(self):
-        return self._c.cmdline()
-
-    def exec(self, command):
-        return psutil.Popen(command)
-
-    def execute(self, command):
-        return CProcess(psutil.Popen(command).pid)
-
-    @classmethod
-    def getRuntime(cls):
-        cls._flash_key()
-        return Runtime(*cls._Key)
 
 
 class Timer(Xfunc):

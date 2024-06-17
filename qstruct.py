@@ -1,103 +1,126 @@
-import hashlib
-import struct
-from typing import Literal, Generator
+from typing import Any
 
+from . import _ostruct as ostruct
 from . import hash as shash
 from . import typefunc, time
-from . import _ostruct as ostruct
+from .json import pickle_simple
 
 
-def pack(data, hashes=None, timestamp=None):
-    # --------------------------------------------
-    # init_head |  8    |   8    | hash报文  | *
-    # 初始化头    |数据长度 | 时间戳 | hash报文 | 数据
-    # --------------------------------------------
-    # init_head = struct.pack("<Q", len(data_bytes+8))  # 加上自己的长度
-    if hashes is None:
-        hashes = ["md5", "sha256", "sha512"]
-    if timestamp is None:
-        timestamp = time.time.time()
-    data_size = ostruct.pack(len(data))  # 使用小端序8个字节无符号整数表示数据长度
-    time_head = ostruct.pack(int(timestamp))  # 时间戳
-    hash_head = b""
-    for hash_name in hashes:
-        # hash_size hash_name_size data_hash hash_name
-        if hash_name in hashlib.__dict__:
-            data_hash = shash.gethashByName(data, hash_name)
-            hash_name_bytes = hash_name.encode("utf-8")  # hash名称
-            hash_name_size = ostruct.pack(len(hash_name_bytes))  # hash名称长度
-            hash_size = ostruct.pack(len(data_hash))  # hash长度
-            hash_head += hash_size + hash_name_size + data_hash + hash_name_bytes  # hash报文
-
-    data_bytes = data_size + hash_head + data
-    init_head = ostruct.pack(len(data_bytes) + 16)
-    return init_head + time_head + data_size + hash_head + data
+def simple_pack(data: bytes):
+    data_bytes = data
+    data_len = len(data_bytes)
+    data_len_bytes = ostruct.pack(data_len)
+    return data_len_bytes + data_bytes
 
 
-def __unpack(__data):
-    data = typefunc.index_offset.offset(__data)
-    init_head = ostruct.unpack(int, data > 8)  # 初始化头——数据段总长
-
-    now_data = data.offseter(init_head - 8)  # 跳过初始化头，获取hash，时间戳和数据
-
-    time_head = ostruct.unpack(int, now_data > 8)  # 时间戳
-    data_size = ostruct.unpack(int, now_data > 8)  # 实际数据长度
-
-    # print(data_size, time_head)
-
-    data_bytes = now_data[-data_size:]  # 数据
-    data_hashes = typefunc.index_offset.offset(now_data[: -data_size])  # 获取hash段
-    data_hashes += 16  # 跳过初始化头、时间戳（16字节）
-    hashes = {}
-    # 分离hash
-    while True:
-        hash_size = ostruct.unpack(int, data_hashes > 8)  # hash 长度
-        hash_name_size = ostruct.unpack(int, data_hashes > 8)  # hash 名称长度
-
-        # print(hash_size, hash_name_size)
-
-        data_hash = data_hashes > hash_size
-        hash_name = data_hashes > hash_name_size
-        hashes[hash_name.decode()] = data_hash
-        if data_hashes.isend():
-            break
-    return {
-        "data": data_bytes,
-        "time": time_head,
-        "hashes": hashes,
-        "size": init_head,
-    }
+def simple_unpack(data: bytes) -> bytes:
+    data_offset = typefunc.index_offset.Offset(data)
+    data_lenght = ostruct.unpack(int, data_offset > 8)
+    return data_offset.offset(data_lenght)
 
 
-def __unpacks(__data):
-    data = __data
-    init_head = struct.unpack("<Q", data >= 8)[0]
-    now_data = data.offseter(init_head)
-    if not data.isend():
-        return [now_data, *__unpacks(data)]
-    return [now_data]
+def simple_unpacks(data: bytes):
+    data_offset = typefunc.index_offset.Offset(data)
+    data_lenght = ostruct.unpack(int, data_offset > 8)
+    one_data = data_offset.offset(data_lenght)
+    if data_offset.isend():
+        return [one_data]
+    else:
+        return [one_data, *simple_unpacks(bytes([*data_offset]))]
 
 
-def unpacks(__data):
-    data = typefunc.index_offset.offset(__data)
-    map_data = map(lambda x: __unpack(x.to(bytes)), __unpacks(data))
-    for i in map_data:
-        yield i  # type: dict
+def simple_unpack_one(data: bytes):
+    data_offset = typefunc.index_offset.Offset(data)
+    data_lenght = ostruct.unpack(int, data_offset > 8)
+    return (data_offset.offset(data_lenght)), bytes(list(data_offset))
 
 
-def lunpacks(__data):
-    return list(unpacks(__data))
+def simple_jsonpickle_pack(data: Any):
+    jsonpickle_data = pickle_simple.encode(data)
+    return simple_pack(jsonpickle_data.encode())
 
 
-def lunpacks_hash(__data):
-    try:
-        ls = lunpacks(__data)
-    except:
-        return None
-    for i in ls:
-        for hash_name, hash_value in i["hashes"].items():
-            assert \
-                shash.gethashByName(i["data"], hash_name) == hash_value, \
-                f"哈希验证错误:\n\tname={hash_name}, \n\tvalue ={hash_value}, \n\texcept={shash.gethashByName(i["data"], hash_name)}."
-    return ls
+def simple_jsonpickle_unpack(data: bytes):
+    orial_data = simple_unpack(data)
+    return pickle_simple.decode(orial_data.decode())
 
+
+def simple_jsonpickle_unpacks(data: bytes):
+    orial_data_list = simple_unpacks(data)
+    return [pickle_simple.decode(x.decode()) for x in orial_data_list]
+
+
+def simple_jsonpickle_unpack_one(data: bytes):
+    orial_one_data, data_ = simple_unpack_one(data)
+    return pickle_simple.decode(orial_one_data.decode()), data_
+
+
+def pack(data_format: list[str], data_format_lenghts: list[int | tuple], data):
+    """
+    pack a str object
+
+    :param data_format: formating list.
+    :param data_format_lenghts: formating list.
+    :param data:
+    :return:
+    """
+    # ["lenght"]
+    data_format_packing_str = simple_pack(  # 打包格式化字符串，用于在解包时使用
+        pickle_simple.encode(data_format).encode()
+    )
+    data_format_str_lenght_bytes = simple_pack(  # 打包格式化字符串长度，用于在解包时使用
+        pickle_simple.encode(data_format_lenghts).encode()
+    )
+
+    data_lenght = len(data)  # 获取数据长度
+
+    if len(data_format) != len(data_format_lenghts):  # 判断格式化字符串长度是否一致
+        raise Exception("data_format and data_format_lenghts must have same length")
+
+    result = b''
+
+    for x, y in zip(data_format, data_format_lenghts):
+        if x == "lenght":
+            result += ostruct.pack_anylenght(data_lenght, y)
+            continue
+        if x == "data":
+            result += ostruct.pack_anylenght(data, y)
+            continue
+        if x == "timestamp":
+            result += ostruct.pack_anylenght(int(time.time.time()), y)
+            continue
+        if x == "hash":
+            hash_name = y[0]
+            hash_lenght = y[1]
+            hash_value = shash.gethashByName(data, hash_name, hash_lenght)
+            result += simple_jsonpickle_pack((hash_name, hash_value))
+            continue
+    #      # simple_pack(data_format_str_lenght_bytes)              # simple_pack(result)
+    return data_format_str_lenght_bytes + data_format_packing_str + simple_pack(result)
+    #                                    # simple_pack(data_format_packing_str)
+
+def unpack(__data):
+    datas = simple_unpacks(__data)
+    data_format_str_list = pickle_simple.decode(datas[0])  # 解包格式化字符串
+    data_format_lenghts_list = pickle_simple.decode(datas[1])  # 解包格式化字符串长度
+    orial_data = typefunc.index_offset.Offset(datas[2])  # 获取数据
+
+    # 根据format解包数据
+    data_data = []
+    for x, y in zip(data_format_str_list, data_format_lenghts_list):  # 遍历格式化字符串
+        if x == "lenght":
+            data_data.append(ostruct.unpack_anylenght(int, orial_data.offset(y), y))
+            continue
+        if x == "data":
+            data_data.append(ostruct.unpack_anylenght(bytes, orial_data.offset(y), y))
+            continue
+        if x == "timestamp":
+            data_data.append(ostruct.unpack_anylenght(int, orial_data.offset(y), y))
+            continue
+        if x == "hash":
+            hash_name, hash_lenght, hash_value = pickle_simple.decode(
+                ostruct.unpack_anylenght(bytes, orial_data.offset(y), y)
+            )
+            data_data.append((hash_name, hash_lenght, hash_value))
+
+    return data_format_str_list, data_format_lenghts_list, data_data

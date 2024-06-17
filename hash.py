@@ -25,7 +25,7 @@ def gethashByName(string, hash_name="sha256", lenght=None):
         lenght = hash_mro[hash_name]
     if lenght < 0 or lenght > max_lenght:
         raise ValueError("lenght must be between 0 and 2**24")
-    if hash_name in hashlib.__dict__:
+    if hash_name in hash_mro:
         hash_func = hashlib.__dict__[hash_name]
         if hash_name not in ("shake_128", "shake_256"):
             return hash_func(string).digest()
