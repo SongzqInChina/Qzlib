@@ -334,6 +334,13 @@ def JsonSuSet(file, **dic):
 def JsonClear(file):
     JsonFileOpen(file).clear().close()
 
+def JsonCreate(file, dic=None):
+    if dic is None:
+        dic = {}
+
+    JsonFileOpen(file).clear().write(**dic).close()
+
+
 
 def JsonEntrypt(file, key, iv=None):
     """

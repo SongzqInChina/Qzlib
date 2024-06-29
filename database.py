@@ -3,6 +3,23 @@ import fnmatch
 from .filex import *
 
 
+class CannotFindError(BaseException):
+    ...
+
+
+class MultipleTargetItemsError(BaseException):
+    ...
+
+
+class NotExistError(BaseException):
+    ...
+
+class ExistItemError(BaseException):
+    ...
+
+
+errors = CannotFindError, MultipleTargetItemsError, NotExistError, ExistItemError
+
 class Template:
     """
     用于设置数据库的数据模版
@@ -155,7 +172,7 @@ class MroFunc:
         return False
 
     def exist(self, **dic):
-        return dic in self._stream['data'][self.mro]['data']
+        return [i for i in self._stream['data'][self.mro]['data'] if self.inner(dic, i)]
 
     def where(self, **dic):
         """
@@ -169,24 +186,19 @@ class MroFunc:
                 ls.append(item)
         return ls
 
-    def find(self, **dic):
+    def absquery(self, **dic) -> dict:
         """
-        方法要求dic必须有效或是有效数据的一部分
+        方法要求dic必须有效或是有效数据的一部分，返回唯一的匹配项
         :param dic: 必须有效
         :return:
         """
         ls = self.where(**dic)
-        assert len(ls) == 1, len(ls)
+        ls_len = len(ls)
+        if ls_len < 1:
+            raise CannotFindError(f"Cannot find item: {dic}")
+        if ls_len > 1:
+            raise MultipleTargetItemsError(f"Multiple target items: {ls_len}(except 1), query_data={dic}")
         return ls[0]
-
-    def absfind(self, **dic):
-        """
-        方法要求dic必须是一个有效数据并符合模版
-        :param dic:
-        :return:
-        """
-        assert Template.instance(self.template, dic)
-        return self.find(**dic)
 
     def remove(self, **dic):
         """
@@ -194,10 +206,15 @@ class MroFunc:
         :param dic:
         :return:
         """
-        if self.exist(**dic):
-            self._stream['data'][self.mro]['data'].remove(dic)
+        if not self.exist(**dic):
+            raise NotExistError(f"Not exist: {dic}")
+        try:
+            data = self.absquery(**dic)
+            self._stream['data'][self.mro]['data'].remove(data)
             return True
-        else:
+        except CannotFindError:
+            return False
+        except MultipleTargetItemsError:
             return False
 
     def calibration(self, tem, dic):
@@ -287,14 +304,11 @@ def settemplate(file, template):
 
 def mkdb(file):
     """
-    创建/清空一个数据库
+    创建/清空一个数据库文件
     :param file:
     :return:
     """
-    f = JsonFileOpen(file)
-    f.clear()
-    f.save()
-    f.close()
+    mkdbEx(file, Template(), 0, "Unkown")
 
 
 def mkdbEx(file, template, version, name):
@@ -306,7 +320,7 @@ def mkdbEx(file, template, version, name):
     :param name:
     :return:
     """
-    mkdb(file)
+    JsonCreate(file)
     setname(file, name)
     settemplate(file, template)
     setversion(file, version)

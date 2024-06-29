@@ -11,14 +11,19 @@ import sys
 from . import path, system, out, other
 
 
-class PluginClientByProcess:
+class PluginServerPipeMode:
+    def __init__(self):
+        self.pipe = os.pipe()
+
+
+class PluginClientPipeMode:
     def __init__(self):
         """
         作为插件的程序必须继承或实例化这个类
         """
         self.pipe = None
 
-    def setpipe(self, pipe):
+    def set_pipe(self, pipe):
         """
         设置管道
         :param pipe: 管道，来自模块`multiprocessing`

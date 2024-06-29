@@ -3,16 +3,16 @@ class Tree:
 
 
 class Node:
-    def __init__(self, value=None, left=None, right=None, parent=None, cmp=lambda a, b: a < b):
-        self.value = value
-        self.left = left
-        self.right = right
-        self.parent = parent
-        self.cmp = cmp
-
+    pass
 
 class BST(Tree):
     class _Node(Node):
+        def __init__(self, value=None, left=None, right=None, parent=None, cmp=lambda a, b: a < b):
+            self.value = value
+            self.left = left
+            self.right = right
+            self.parent = parent
+            self.cmp = cmp
 
         def insert(self, value):
             # Cmp(self.value, value) left'<' , right'>'

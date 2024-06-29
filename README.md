@@ -5,6 +5,14 @@
 # 目录结构：
 - szqlib/
   - \_\_init__.py
+  - typefunc/
+    - func.py
+    - BinaryTree.py
+    - dict.py
+    - index_offset.py
+    - list.py
+    - template.py
+    - threaLock.py
   - _ostruct.py
   - qstruct.py
   - file.py
