@@ -1,3 +1,4 @@
+import copy
 import inspect
 import os
 
@@ -61,53 +62,98 @@ def shutdown(mode: str, _time: int = 1):
     return os.system(f'shutdown -{mode} -t {_time}')
 
 
-class Environment:
-    def __init__(self):
-        self._env = os.environ
+class EnvVar:
+    @staticmethod
+    def to_list(__value, __value_sep: str = ';'):
+        return [i for i in __value.split(__value_sep) if not i.isspace() if i]
 
-    def set(self, key: str, value: str):
-        self._env[key] = value
+    def __init__(self, __key, __v, __value_sep: str = ';'):
+        self.__value_sep = __value_sep
+        self.key = __key
+        self.value = __v
+        # 解析value为列表
+        self.value_list = self.to_list(self.value, self.__value_sep)
 
-    def get(self, key: str):
-        return self._env.get(key)
+    def set(self, __i, __v: str):
+        """
+        set a new value to `env var`
 
-    def delete(self, key: str):
-        if key not in self._env:
-            return
-        del self._env[key]
+        :param __i: index of env var
+        :param __v: new value
+        :raise ValueError: if ';' in your value
+        """
+        if self.__value_sep in __v:
+            raise ValueError(f"value must not contain '{self.__value_sep}'")
+        if __i >= len(self.value_list):
+            return self.value_list.append(__v)
+        self.value_list[__i] = __v
 
-    def add(self, key: str, value: str):
-        if key not in self._env:
-            self._env[key] = value
-            return
-        self._env[key] += value
+    def pop(self, __i):
+        if __i >= len(self.value_list):
+            raise IndexError(f'index out of range: {__i}')
+        return self.value_list.pop(__i)
 
-    def sub(self, key: str, value: str):
-        if key not in self._env:
-            return
-        values = self._env[key].split(';')
-        self._env[key] = ';'.join(filter(lambda v: v != value, values))
+    def remove(self, _item):
+        if _item not in self.value_list:
+            raise ValueError(f'{_item} not in env var')
+        self.value_list.remove(_item)
+
+    def insert(self, __i, __v: str):
+        self.value_list.insert(__i, __v)
+
+    def append(self, __v: str):
+        self.value_list.append(__v)
+
+    def get(self, __i):
+        if __i >= len(self.value_list):
+            raise IndexError(f'index out of range: {__i}')
+        return self.value_list[__i]
 
     def clear(self):
-        self._env.clear()
+        self.value_list = []
 
-    def get_values(self, key):
-        return self._env[key].split(';')
+    def load(self, string: str | None = None):
+        if string is None:
+            self.value_list = self.to_list(self.value, self.__value_sep)
+        else:
+            self.value_list = self.to_list(string, self.__value_sep)
 
-    def __iter__(self):
-        for key in self._env:
-            values = self.get_values(key)
-            yield key, values
+    def __str__(self):
+        return self.__value_sep.join(self.value_list)
 
-    def add_item(self, key, value):
-        if key not in self._env:
-            self.set(key, value)
-            return
-        values = self.get_values(key)
-        if value in values:
-            return
-        values.append(value)
-        self.set(key, ';'.join(values))
+    __repr__ = __str__
+
+
+class LocalEnv:
+    def __init__(self, envs: list | None = None):
+        if envs is None:
+            self._envs = [os.environ.copy()]  # index 0 is os.environ
+        else:
+            self._envs = [os.environ.copy(), *copy.deepcopy(envs)]  # copy envs
+
+    def set(self, __i: int, __k: str, __v: str) -> None:
+        self._envs[__i][__k] = __v
+
+    def get(self, __i: int, __k: str) -> str:
+        return self._envs[__i][__k]
+
+    def add(self, __i: int, __key: str, _item: str):
+        """
+        add a item into a env
+        """
+        if __key not in self._envs[__i]:
+            self._envs[__i][__key] = ""
+        # get EnvVar object
+        env_var = EnvVar(__key, self._envs[__i][__key])
+        env_var.append(_item)
+        self._envs[__i][__key] = str(env_var)
+
+    def activate(self, __i: int):
+        if __i >= len(self._envs):
+            raise IndexError(f'index out of range: {__i}')
+        env = self._envs[__i]
+        os.environ.clear()
+        os.environ.update(env)
 
 
 class Runtime:

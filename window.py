@@ -361,7 +361,6 @@ class Win32Window:
             return object.__getattribute__(self, item)
 
 
-
 def windows():
     return (Win32Window(hwnd) for hwnd in handles())
 

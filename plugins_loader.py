@@ -10,22 +10,16 @@ import os
 import sys
 from . import path, system, out, other
 
+class ImportMode(object):
+    pass
 
-class PluginServerPipeMode:
-    def __init__(self):
-        self.pipe = os.pipe()
+class PluginServerImportMode(ImportMode):
+    """
+    PluginServer with Import Mode
+    """
+    def __init__(self, program_name):
+        self.program_name = program_name
+        self.plugins = {}
 
-
-class PluginClientPipeMode:
-    def __init__(self):
-        """
-        作为插件的程序必须继承或实例化这个类
-        """
-        self.pipe = None
-
-    def set_pipe(self, pipe):
-        """
-        设置管道
-        :param pipe: 管道，来自模块`multiprocessing`
-        """
-        self.pipe = pipe
+    def add_plugin(self, plugin_path):
+        pass
