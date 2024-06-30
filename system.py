@@ -148,12 +148,32 @@ class LocalEnv:
         env_var.append(_item)
         self._envs[__i][__key] = str(env_var)
 
+    def create_env(self, __i: int | None = ...):
+        """
+        create a new env
+        """
+        if __i is None:
+            self._envs.append(os.environ.copy())
+            return len(self._envs) - 1
+        else:
+            self._envs.insert(__i, os.environ.copy())
+            return __i
+
+
     def activate(self, __i: int):
         if __i >= len(self._envs):
             raise IndexError(f'index out of range: {__i}')
         env = self._envs[__i]
         os.environ.clear()
         os.environ.update(env)
+
+    def remove(self, __i):
+        if __i >= len(self._envs):
+            raise IndexError(f'index out of range: {__i}')
+        self._envs.pop(__i)
+
+    def get_processer(self, index, key, value_sep: str = ';'):
+        return EnvVar(key, self._envs[index][key], value_sep)
 
 
 class Runtime:
