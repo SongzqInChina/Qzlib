@@ -37,6 +37,10 @@ def eupdate(dic1, dic2):
 
 
 def sort(dic1, dic2):
+    """
+    将dic1和dic2的键修改至相同（key），返回dic1
+    当dic1.keys() == dic2.keys()，字典不会发生任何更改
+    """
     # 将两部字典的键修改至相同
     for i in dic1:
         if i not in dic2:
@@ -45,3 +49,15 @@ def sort(dic1, dic2):
         if i not in dic1:
             dic1[i] = dic2[i]
     return dic1
+
+
+def get_pairs_by_value(dic, value, reverse=False):
+    """
+    通过值获取所以符合的键值对，结果以字符排序（默认升序），可以通过reverse参数控制
+
+    :param dic: a dict type object
+    :param value: a value of dict
+    :param reverse: 控制升序降序，对于sort/sorted中的reverse参数
+    """
+    pairs = [(k, v) for k, v in dic.items() if v == value]
+    return sorted(pairs, key=lambda x: x[0], reverse=reverse)

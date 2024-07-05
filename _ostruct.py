@@ -1,9 +1,9 @@
 import copy
 import struct
 
-from . import encrypt
+from . import zencrypt
 from . import typefunc
-from .json import pickle_simple
+from .zjson import pickle_simple
 
 
 def pack(data):

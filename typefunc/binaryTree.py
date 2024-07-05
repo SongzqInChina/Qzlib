@@ -5,6 +5,7 @@ class Tree:
 class Node:
     pass
 
+
 class BST(Tree):
     class _Node(Node):
         def __init__(self, value=None, left=None, right=None, parent=None, cmp=lambda a, b: a < b):
@@ -69,17 +70,17 @@ class BST(Tree):
                     # 找到右子树中最小值
                     min_node = self.right.find_min()
                     # 删除右子树中最小值
-                    self.right.delete(min_node.value)
+                    self.right.delete(min_node._value)
                     # 将右子树中最小值赋值给当前节点
-                    self.value = min_node.value
+                    self.value = min_node._value
                 elif self.left:
                     # 如果左子树不为空，则将左子树赋值给当前节点
-                    self.value = self.left.value
+                    self.value = self.left._value
                     # 删除左子树
                     self.left.clear()
                 elif self.right:
                     # 如果右子树不为空，则将右子树赋值给当前节点
-                    self.value = self.right.value
+                    self.value = self.right._value
                     # 删除右子树
                     self.right.clear()
                 else:
@@ -162,7 +163,7 @@ def print_tree_img(root, linewidth=80):
 
     # 辅助函数计算节点的字符串表示
     def node_str(node):
-        return f"{node.value}" if node else ""
+        return f"{node._value}" if node else ""
 
     # 辅助函数计算节点的宽度
     def node_width(node):
@@ -192,7 +193,7 @@ def print_tree_img(root, linewidth=80):
 
 
 def print_tree(root):
-    if root and root.value is not None:
+    if root and root._value is not None:
         print_tree(root.left)
-        print(root.value, end=' ')
+        print(root._value, end=' ')
         print_tree(root.right)

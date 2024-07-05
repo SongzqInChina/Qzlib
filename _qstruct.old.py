@@ -2,8 +2,8 @@ import hashlib
 import struct
 from typing import Literal, Generator
 
-from . import hash as shash
-from . import typefunc, time
+from . import zhash as shash
+from . import typefunc, ztime
 from . import _ostruct as ostruct
 
 

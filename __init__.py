@@ -1,29 +1,66 @@
-from . import \
-    (
-    database,
-    databaseX,
-    encrypt,
-    file,
-    filex,
-    json,
-    libcon,
-    network,
-    namepipe,
-    out,
-    other,
-    path,
-    process,
-    processx,
-    reg,
-    system,
-    shell,
-    time,
-    thread,
+import logging
+
+from . import zout, ztime
+
+
+class _LogFormat(logging.Formatter):
+    def format(self, record):
+        message = record.getMessage()
+        error_level = record.levelname
+        data_time = ztime.time.asctime()
+        if error_level == "ERROR":
+            color_head = zout.get_color_head(255, 0, 0)
+        if error_level == "WARNING":
+            color_head = zout.get_color_head(255, 255, 0)
+        if error_level == "INFO":
+            color_head = zout.get_color_head(0, 255, 0)
+        if error_level == "DEBUG":
+            color_head = zout.get_color_head(0, 0, 255)
+        if error_level == "CRITICAL":
+            color_head = zout.get_color_head(255, 0, 255)
+        if error_level == "NOTSET":
+            color_head = zout.get_color_init()
+
+        return f"Module {record.module} at '{data_time}' Logging: [{error_level}] - {message}" + zout.get_color_init()
+
+
+_lib_logging_root = logging.getLogger()
+_Formatter = _LogFormat()
+_lib_logging_root.setLevel(logging.DEBUG)
+
+
+def management_logger():
+    return _lib_logging_root
+
+
+from . import (
+    zdatabase,
+    zdatabaseX,
+    zencrypt,
+    zfile,
+    zfilex,
+    zjson,
+    zlibcon,
+    znetwork,
+    znamepipe,
+    zother,
+    zpath,
+    zprocess,
+    zprocessx,
+    zreg,
+    zsystem,
+    zshell,
+    zthread,
     typefunc,
-    window,
-    qstruct,
+    zwindow,
+    zstruct,
     sample,
-    FileSystemMapper,
-    plugins_loader,  # TODO: This module is not finished
-    auth
+    zFileSystemMapper,
+    zplugins_loader,  # TODO: This module is not finished
+    zauth,
+    zsimplepipe,
+    zhash,
+    zimport_func
 )
+
+_lib_logging_root.debug("All modules are ready.")
