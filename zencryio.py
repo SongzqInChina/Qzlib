@@ -1,8 +1,10 @@
 import logging
+import socket
 
-from SzQlib.zencrypt import decode, encode
-from SzQlib.zfilex import JsonFileOpen, null
-from SzQlib.zjson import pickle_simple
+from .zencrypt.aes import decode as aes_decode, encode as aes_encode
+from .zfilex import JsonFileOpen, null
+from .zjson import pickle_simple
+from .znetwork import SimpleSocket
 
 zencryio_logger = logging.getLogger("SzQlib.zencryio")
 
@@ -19,19 +21,25 @@ class _entryptJsonFile:
 
     def __getitem__(self, item):
         cry_text = self.iostream[item]
-        plain_text = decode(cry_text, self.key, self.iv)
+        plain_text = aes_decode(cry_text, self.key, self.iv)
         return pickle_simple.decode(plain_text)
 
     def __setitem__(self, key, value):
         value = pickle_simple.encode(value)
-        cry_text = encode(value, self.key, self.iv)
+        cry_text = aes_encode(value, self.key, self.iv)
         self.iostream[key] = cry_text
 
     def __delitem__(self, key):
         del self.iostream[key]
 
     def get(self, key, default=null):
-        return self.iostream.get(key, default)
+        try:
+            x = self.iostream.get(key, default)
+            return aes_decode(x, self.key, self.iv)
+        except KeyError as e:
+            if default is not null:
+                return default
+            raise e
 
     def clear(self):
         self.iostream.clear()
@@ -69,6 +77,11 @@ class _entryptJsonFile:
 
 def EncryptJsonOpen(filename, key, iv):
     return _entryptJsonFile(filename, key, iv)
+
+
+class EncryptSocket(SimpleSocket):
+    def __init__(self, s: socket.socket | object | None, key=None, iv=None):
+        super().__init__(s)
 
 
 zencryio_logger.debug("Module zencryio loading ...")

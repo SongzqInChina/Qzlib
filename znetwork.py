@@ -1,8 +1,10 @@
+import builtins
 import hashlib
 import queue
 import re
 import socket
 import time
+import warnings
 from typing import (
     Callable
 )
@@ -363,7 +365,7 @@ class SimpleSocket:
         return conn_simple, addr
 
     def write(self, data):
-        packing_data_bytes = qstruct.simple_jsonpickle_pack(data)
+        packing_data_bytes = zstruct.simple_jsonpickle_pack(data)
 
         try:
             self.sock.sendall(packing_data_bytes)
@@ -399,7 +401,7 @@ class SimpleSocket:
         if every_data == b'':
             return None
 
-        unpacking_datas = qstruct.simple_jsonpickle_unpacks(every_data)
+        unpacking_datas = zstruct.simple_jsonpickle_unpacks(every_data)
         return unpacking_datas
 
     def read(self, timeout=None):
@@ -523,6 +525,8 @@ class RemoteCallServer:
         if not typefunc.func.is_callable(func):
             raise Exception("Func param must be callable")
         func_name = func.__name__
+        if func is builtins.eval or func_name == "eval":
+            warnings.warn("Registering 'eval' function is potentially dangerou. Exercise extreme caution!", category=UserWarning)
         self.functions[func_name] = func
 
     def unlink(self, func):
@@ -544,8 +548,9 @@ class RemoteCallServer:
                 fc_name, fc_args, fc_kwargs = post.gets(["fc_name", "fc_args", "fc_kwargs"])
                 if fc_name not in self.functions:  # function not found
                     self.socket.send(
-                        fc_name=fc_name, time=time.time(),
-                        result=("error", RuntimeError("Function not found"))
+                        fc_name=fc_name,
+                        time=time.time(),
+                        result=("server_error", RuntimeError("Function not found"))
                     )  # send error
                 func = self.functions[fc_name]  # get function
                 try:
@@ -580,10 +585,18 @@ class RemoteCallClient:
         answer = self.socket.get()
         if answer is None:
             raise Exception("No answer")
-        return answer.gets(["time", "result"])
+        result = answer.get("result")
+        return dict(
+            time=answer.get("time"),
+            ok=result[0] == "ok",
+            return_value=result[1],
+            result=result
+        )
 
     def request(self, fc_name, *fc_args, **fc_kwargs):
         return self._request(fc_name, fc_args, fc_kwargs)
 
     def close(self):
         self.socket.close()
+
+

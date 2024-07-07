@@ -13,7 +13,7 @@ class _PIPEWriter:
 
     def __init__(self, writer: int, buffer_size: int = 1024):
         self._pipe = writer
-        self._io = os.fdopen(self._pipe, 'wb', buffer_size)
+        self._io = os.fdopen(self._pipe, 'w', buffer_size)
 
         self._msg_queue = queue.Queue(buffer_size)
         self._event = zthread.threading.Event()
@@ -27,14 +27,14 @@ class _PIPEWriter:
         self._io.close()
         self._write_thread.join()
         self._pipe = pipe
-        self._io = os.fdopen(self._pipe, 'wb', self.buffersize)
+        self._io = os.fdopen(self._pipe, 'w', self.buffersize)
         self._event.clear()
         self._write_thread = zthread.start_demon_thread(self._write_thread_func)
 
     def write(self, data):
         if data is None or data is ...:
             raise ValueError("You should send 'None' or '...' to the reader, they hava their functions.")
-        data_text = zstruct.simple_jsonpickle_pack(data)
+        data_text = zjson.pickle_simple.encode(data)
         self._msg_queue.put(data_text)
 
     def _write_thread_func(self):
@@ -42,6 +42,7 @@ class _PIPEWriter:
             if not self._msg_queue.empty():
                 msg = self._msg_queue.get()
                 self._io.write(msg)
+                self._io.write('\n')
                 self._io.flush()
 
 
@@ -49,7 +50,7 @@ class _PIPEReader:
     def __init__(self, reader: int):
         self._pipe = reader
 
-        self._io = os.fdopen(reader, 'rb')
+        self._io = os.fdopen(reader, 'r')
 
         self._msg_queue = queue.Queue()
         self._event = zthread.threading.Event()
@@ -61,7 +62,7 @@ class _PIPEReader:
         self._read_thread.join()
         self._io.close()
         self._pipe = reader
-        self._io = os.fdopen(self._pipe, 'rb')
+        self._io = os.fdopen(self._pipe, 'r')
         self._event.clear()
         self._read_thread = zthread.start_demon_thread(self._read_thread_func)
 
@@ -79,9 +80,9 @@ class _PIPEReader:
         while not self._event.is_set():
             try:
 
-                one_data_length = int.from_bytes(self._io.read(8))
-                one_data = self._io.read(one_data_length)
-
+                # one_data_length = int.from_bytes(self._io.read(8))
+                one_data = self._io.readline()
+                print("One data: ", one_data)
                 unpacking_data = zjson.pickle_simple.decode(one_data)
                 self._msg_queue.put(unpacking_data)
             except Exception as e:
