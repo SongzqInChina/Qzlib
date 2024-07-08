@@ -4,6 +4,8 @@ import os.path
 
 from . import zsystem
 
+# module end
+
 zimport_func_logger = logging.getLogger("SzQlib.zimport_func")
 
 

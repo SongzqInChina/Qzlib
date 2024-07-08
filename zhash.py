@@ -3,6 +3,8 @@ import logging
 
 zhash_logger = logging.getLogger("SzQlib.zhash")
 
+# module end
+
 hash_mro = {
     "md5": 16,
     "sha256": 32,

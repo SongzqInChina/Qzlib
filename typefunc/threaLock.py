@@ -1,6 +1,8 @@
 import threading
 
 
+# module end
+
 class _ThreadPipe(threading.Event):
     def __init__(self):
         super().__init__()

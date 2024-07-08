@@ -4,6 +4,8 @@ import os
 
 from .zjson import *
 
+# module end
+
 zfilex_logger = logging.getLogger('SzQlib.zfilex')
 
 

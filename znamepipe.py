@@ -5,6 +5,7 @@ import jsonpickle as json
 import win32file
 import win32pipe
 
+# module end
 
 class _Reader:
     _lock = threading.Lock()

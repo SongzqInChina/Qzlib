@@ -1,11 +1,14 @@
 import logging
 import os
 from typing import Iterable
-from .func import split, pad, unpad
 
 import pyaes
 
+from .func import split, pad, unpad
+
 zencrypt_logger = logging.getLogger("SzQlib.zencrypt")
+
+# module end
 
 
 def aes_encrypt(plaintext: bytes, key, iv=None):
@@ -25,8 +28,6 @@ def aes_decrypt(ciphertext, key, iv):
     return decrypted_data
 
 
-
-
 def aes_encrypt_ls(plain_text_list: Iterable, key, vi=None, NoIV=False):
     for i in plain_text_list:
         if NoIV:
@@ -38,9 +39,6 @@ def aes_encrypt_ls(plain_text_list: Iterable, key, vi=None, NoIV=False):
 def aes_detrypt_ls(cipher_text_list, key, vi):
     for i in cipher_text_list:
         yield aes_decrypt(i, key, vi)
-
-
-
 
 
 def generate_key(size=16):
@@ -63,7 +61,7 @@ def join(args):
     return b''.join(args)
 
 
-def encode(text: str, key, iv):  # 提供一个最简单的加密api
+def encode(text: bytes, key, iv):  # 提供一个最简单的加密api
     """
     加密函数，提供一个最简单的api加快使用效率
     :param text:
@@ -71,14 +69,14 @@ def encode(text: str, key, iv):  # 提供一个最简单的加密api
     :param iv:
     :return: bytes
     """
-    byte = text.encode('utf-8')
+    byte = text
     byte = split_pad(byte)
     crypt_text = aes_encrypt_ls(byte, key, iv, NoIV=True)
 
     return join(crypt_text)
 
 
-def decode(crypt_text, key, iv):  # 提供一个最简单的解密api
+def decode(crypt_text: bytes, key, iv):  # 提供一个最简单的解密api
     """
     解密，提供一个最简单的api加快使用效率
     :param crypt_text:
@@ -90,14 +88,14 @@ def decode(crypt_text, key, iv):  # 提供一个最简单的解密api
     plain_text = list(aes_detrypt_ls(crypt_list, key, iv))
     for i in range(len(plain_text)):
         plain_text[i] = unpad(plain_text[i])
-    return join(plain_text).decode('utf-8')
+    return join(plain_text)
 
 
-def encrypt(plain_text, key, iv=None):  # 别名
+def encrypt(plain_text: bytes, key, iv=None):  # 别名
     return encode(plain_text, key, iv)
 
 
-def decrypt(crypt_text, key, iv=None):  # 别名
+def decrypt(crypt_text: bytes, key, iv=None):  # 别名
     return decode(crypt_text, key, iv)
 
 

@@ -11,6 +11,8 @@ import jsonpickle
 zjson_logger = logging.getLogger("SzQlib.zjson")
 
 
+# module end
+
 class json_simple:
     @staticmethod
     def encode(data):

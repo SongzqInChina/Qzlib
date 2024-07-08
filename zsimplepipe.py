@@ -5,6 +5,8 @@ import queue
 
 from . import zstruct, zthread, zjson
 
+# module end
+
 
 class _PIPEWriter:
     """

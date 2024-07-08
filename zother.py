@@ -3,8 +3,10 @@ import logging
 import os
 from typing import Any
 
+# module end
 
 zother_logger = logging.getLogger("SzQlib.zother")
+
 
 class cglobalc:
     _init = False

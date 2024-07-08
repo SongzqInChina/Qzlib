@@ -5,6 +5,7 @@ import win32con
 
 zfile_logger = logging.getLogger("SzQlib.zfile")
 
+# module end
 
 def create_file(file, text="", clean: bool = True):
     """

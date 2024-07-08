@@ -4,6 +4,7 @@ from .zpath import *
 
 zfilesystemmapper_logger = logging.getLogger('SzQlib.zfilesystemmapper')
 
+# module end
 
 class File:
     def __init__(self, file):

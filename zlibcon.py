@@ -1,5 +1,6 @@
 import logging
 
+# module end
 
 zlibcon_logger = logging.getLogger("SzQlib.zlibcon")
 

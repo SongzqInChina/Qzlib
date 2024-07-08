@@ -15,6 +15,8 @@ from . import zstruct
 from . import zthread as libthreading
 from . import typefunc
 
+# module end
+
 
 def _ipa():
     """

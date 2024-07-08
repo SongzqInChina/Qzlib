@@ -1,7 +1,8 @@
 import logging
 import socket
 
-from .zencrypt.aes import decode as aes_decode, encode as aes_encode
+from .zencrypt.aes import decrypt as aes_decode, encode as aes_encode
+from .zencrypt.rsa import encrypt as rsa_encrypt, decrypt as rsa_decrypt
 from .zfilex import JsonFileOpen, null
 from .zjson import pickle_simple
 from .znetwork import SimpleSocket
@@ -9,7 +10,10 @@ from .znetwork import SimpleSocket
 zencryio_logger = logging.getLogger("SzQlib.zencryio")
 
 
-class _entryptJsonFile:
+# module end
+
+
+class _EncryptJsonFile:
     """
     entrypt the value , not key and value
     """
@@ -76,12 +80,60 @@ class _entryptJsonFile:
 
 
 def EncryptJsonOpen(filename, key, iv):
-    return _entryptJsonFile(filename, key, iv)
+    return _EncryptJsonFile(filename, key, iv)
 
 
 class EncryptSocket(SimpleSocket):
-    def __init__(self, s: socket.socket | object | None, key=None, iv=None):
+    def __init__(self, s: socket.socket | object | None, aes_key=None, aes_iv=None, rsa_pubkey=None, rsa_prikey=None):
         super().__init__(s)
+        self._encry_mode = None
+
+        if not any([aes_key, aes_iv, rsa_pubkey, rsa_prikey]):
+            raise ValueError("必须指定aes_key, aes_iv, rsa_pubkey, rsa_prikey")
+
+        if aes_key is not None and aes_iv is not None:
+            self._encry_mode = 'aes'
+            self.key1 = aes_key
+            self.key2 = aes_iv
+
+        elif rsa_pubkey is not None and rsa_prikey is not None:
+            self._encry_mode = 'rsa'
+            self.key1 = rsa_pubkey
+            self.key2 = rsa_prikey
+
+        else:
+            args = [
+                k for k, v in
+                {'aes_key': aes_key, 'aes_iv': aes_iv, 'rsa_pubkey': rsa_pubkey, 'rsa_prikey': rsa_prikey}.items() if
+                v is not None
+            ]
+            raise ValueError(
+                f"无法确定加密方式(Args: {tuple(args)}"
+            )
+
+    def write(self, data):
+        data = pickle_simple.encode(data).encode()  # <------------- encode() return bytes
+        if self._encry_mode:
+            if self._encry_mode == 'aes':
+                encry_data = aes_encode(data, self.key1, self.key2)
+            elif self._encry_mode == 'rsa':
+                encry_data = rsa_encrypt(data, self.key1)
+            else:
+                raise ValueError("无效的加密模式")
+            super().write(encry_data)
+
+    def read(self, timeout=None):
+        if self._encry_mode:
+            if self._encry_mode == 'aes':
+                encry_data = super().read(timeout)
+                decry_data = aes_decode(encry_data, self.key1, self.key2)
+            elif self._encry_mode == 'rsa':
+                encry_data = super().read(timeout)
+                decry_data = rsa_decrypt(encry_data, self.key2)
+            else:
+                raise ValueError("无效的加密模式")
+
+            return pickle_simple.decode(decry_data.decode())
 
 
 zencryio_logger.debug("Module zencryio loading ...")

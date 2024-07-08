@@ -2,6 +2,8 @@ import logging
 
 func_logger = logging.getLogger("SzQlib.zencrypt.func")
 
+# module end
+
 
 def _pkcs7_pad(data: bytes, block_size: int) -> bytes:
     if len(data) >= block_size:
