@@ -407,7 +407,10 @@ class SimpleSocket:
         return unpacking_datas
 
     def read(self, timeout=None):
-        data = self._buffer.get(timeout=timeout)
+        try:
+            data = self._buffer.get(timeout=timeout)
+        except queue.Empty:
+            return None
         return data
 
     def start_server(self):

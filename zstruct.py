@@ -25,7 +25,7 @@ def simple_unpacks(data: bytes):
     if data_offset.isend():
         return [one_data]
     else:
-        return [one_data, *simple_unpacks(bytes([*data_offset]))]
+        return [one_data, *simple_unpacks(bytes([*data_offset.iterable]))]
 
 
 def simple_unpack_one(data: bytes):

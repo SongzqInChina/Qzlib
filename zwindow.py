@@ -1,10 +1,12 @@
+import json
 import tkinter as tk
 
-import pywintypes
 import win32api
 import win32con
 import win32gui
 import win32process
+
+from .zprocessx import CProcess
 
 MB_OK = 0
 MB_OK_CLEAN = 1
@@ -171,9 +173,9 @@ def inputbox(msg="", title="", default=''):
 
 def handles():
     def callback(__hwnd, __hwnds):
-        __hwnds.append(__hwnd)
+        __hwnds += (__hwnd, )
 
-    hwnds = []
+    hwnds = ()
     win32gui.EnumWindows(callback, hwnds)
     return hwnds
 
@@ -323,7 +325,6 @@ class Win32Window:
         # 调用SetWindowPos设置新位置和尺寸
         return win32gui.SetWindowPos(self._hwnd, hWndInsertAfter, newX, newY, newWidth, newHeight, flags)
 
-
     def rect(self):
         return win32gui.GetWindowRect(self._hwnd)
 
@@ -340,7 +341,7 @@ class Win32Window:
         return self.__class__(win32gui.GetWindow(self._hwnd, win32con.GW_CHILD))
 
     def close(self):
-        return win32gui.CloseWindow(self._hwnd)
+        return win32gui.DestroyWindow(self._hwnd)
 
     def parent(self):
         return self.__class__(win32gui.GetParent(self._hwnd))
@@ -396,9 +397,27 @@ class Win32Window:
     def __getattribute__(self, item):
         hwnd = object.__getattribute__(self, "_hwnd")
         if hwnd not in handles():
-            raise f"HWND {hwnd} is not valid"
+            raise OSError(f"HWND {hwnd} is not valid")
         else:
             return object.__getattribute__(self, item)
+
+    def __str__(self):
+        return str(dict(
+            {
+                "hwnd": self._hwnd,
+                "title": self.title(),
+                "process": self.process(),
+                "thread": self.thread(),
+                "rect": self.rect(),
+                "visible": self.visible(),
+                "enabled": self.enable(),
+                "foreground": self.foreground(),
+                "active": self.active(),
+                "top": self.top(),
+                "parent": self.parent(),
+                "img_name": CProcess(self.process())
+            }
+        ))
 
 
 def windows():

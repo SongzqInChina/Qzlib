@@ -2,6 +2,7 @@
 
 import os
 import queue
+from collections import deque
 
 from . import zstruct, zthread, zjson
 
@@ -58,6 +59,7 @@ class _PIPEReader:
         self._event = zthread.threading.Event()
 
         self._read_thread = zthread.start_demon_thread(self._read_thread_func)
+        self.errors = deque()
 
     def set(self, reader):
         self._event.set()
@@ -81,14 +83,11 @@ class _PIPEReader:
     def _read_thread_func(self):
         while not self._event.is_set():
             try:
-
-                # one_data_length = int.from_bytes(self._io.read(8))
                 one_data = self._io.readline()
-                print("One data: ", one_data)
                 unpacking_data = zjson.pickle_simple.decode(one_data)
                 self._msg_queue.put(unpacking_data)
             except Exception as e:
-                print("Error with: ", e)
+                self.errors.append(e)
 
 
 def writer(pipe: int, buffer_size: int = 65535):

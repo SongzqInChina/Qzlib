@@ -60,7 +60,8 @@ from . import (
     zauth,
     zsimplepipe,
     zhash,
-    zimport_func
+    zimport_func,
+    zencryio
 )
 
 _lib_logging_root.debug("All modules are ready.")

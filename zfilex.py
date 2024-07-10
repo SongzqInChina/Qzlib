@@ -374,17 +374,17 @@ def JsonEncrypt(file, key, iv=None):
     :param iv:
     :return:
     """
-    from .zencrypt import aes_encrypt
+    from .zencrypt import encrypt
     data = JsonGet(file)
     JsonClear(file)
     dstr = encode(data).encode('utf-8')
-    JsonSet(file, data=aes_encrypt(dstr, key, iv))  # 将加密后的内容写入data项
+    JsonSet(file, data=encrypt(dstr, key, iv))  # 将加密后的内容写入data项
 
 
 def JsonDecrypt(file, key, iv=None):
-    from .zencrypt import aes_decrypt
+    from .zencrypt import decrypt
     data = JsonGet(file, 'data')  # 读取data项
-    data = aes_decrypt(data, key, iv)  # 解密
+    data = decrypt(data, key, iv)  # 解密
     JsonClear(file)
     JsonSuSet(file, **decode(data))
 
