@@ -11,9 +11,10 @@ from typing import (
 
 import ping3
 
+from . import typefunc
 from . import zstruct
 from . import zthread as libthreading
-from . import typefunc
+
 
 # module end
 
@@ -428,6 +429,19 @@ class SimpleSocket:
         self.close()
 
 
+def is_tcp(s: SimpleSocket | socket.socket):
+    if isinstance(s, SimpleSocket):
+        return is_tcp(s.sock)
+    else:
+        return s.type == socket.SOCK_STREAM
+
+def is_udp(s: SimpleSocket | socket.socket):
+    if isinstance(s, SimpleSocket):
+        return is_udp(s.sock)
+    else:
+        return s.type == socket.SOCK_DGRAM
+
+
 class RemotePost:  # RemotePost 使用一问一答形式发送数据
     class _Post:
         def __init__(self, **data):
@@ -531,7 +545,8 @@ class RemoteCallServer:
             raise Exception("Func param must be callable")
         func_name = func.__name__
         if func is builtins.eval or func_name == "eval":
-            warnings.warn("Registering 'eval' function is potentially dangerou. Exercise extreme caution!", category=UserWarning)
+            warnings.warn("Registering 'eval' function is potentially dangerou. Exercise extreme caution!",
+                          category=UserWarning)
         self.functions[func_name] = func
 
     def unlink(self, func):
@@ -604,4 +619,32 @@ class RemoteCallClient:
     def close(self):
         self.socket.close()
 
+
+class MultiSocket(SimpleSocket):
+    def __init__(self, *args, **kwargs):
+        super(SimpleSocket, self).__init__(*args, **kwargs)
+        self.members = []
+
+        self.operates = queue.Queue()
+        self.threads = []
+
+        self.request_template = {
+            "data": None
+        }
+
+    def _accept(self):
+        conn, addr = self.accept()
+        self.members.append((conn, addr))
+
+    def _socket_listen(self, sock: SimpleSocket):  # 监听一个socket
+        def _listen_thread():
+            while True:
+                try:
+                    operate = self.read()
+                    if operate.keys() != self.request_template.keys():
+                        continue
+                    operate['source'] = sock.sock.getpeername()
+                    self.operates.put()
+                except queue.Empty:
+                    pass
 

@@ -1,2 +1,3 @@
 # git ignore
 _ZqLib_Test.py
+.idea

@@ -1,35 +1,48 @@
-class Node:
-    def __init__(self, leaf=True):
+cdef class Node:
+    cdef bool leaf
+    cdef int n
+    cdef list keys
+    cdef list values
+    cdef list children
+
+    cdef void __cinit__(self, leaf=True):
         self.leaf = leaf
         self.n = 0
         self.keys = []
         self.values = []
         self.children = []
 
-    def __del__(self):
+    cdef void __del__(self):
         for child in self.children:
             del child
 
-    def __str__(self):
+    cdef str __str__(self):
         if self.leaf:
             return f"Leaf Node({dict(zip(self.keys, self.values))})"
         else:
             return f"Internal Node({dict(zip(self.keys, [child.__str__() for child in self.children]))})"
 
 
-class SearchResult:
-    def __init__(self, result=None, iserror=False, error_message=""):
+cdef class SearchResult:
+    cdef object result
+    cdef bool iserror 
+    cdef str error_message
+
+    cdef void __cinit__(self, result=None, iserror=False, str error_message=""):
         self.result = result
         self.iserror = iserror
         self.error_message = error_message
 
 
 class BplusTree:
-    def __init__(self, t):
-        self.root = Node()
-        self.t = t
+    cdef Node root
+    cdef int t
 
-    def split_child(self, x, i):
+    cdef void __cinit__(self, int t):
+        self.root: Node = Node()
+        self.t: int = t
+
+    cdef void split_child(self, Node x, int i):
         y = x.children[i]
         z = Node(leaf=y.leaf)
 
@@ -54,8 +67,8 @@ class BplusTree:
         # Increment the number of keys in x
         x.n += 1
 
-    def insert_non_full(self, x, k, v):
-        i = x.n - 1
+    cdef void insert_non_full(self, Node x, k, v):
+        cdef i = x.n - 1
 
         if x.leaf:
             while i >= 0 and k < x.keys[i]:
@@ -77,7 +90,7 @@ class BplusTree:
 
             self.insert_non_full(x.children[i], k, v)
 
-    def merge_children(self, x, i):
+    cdef void merge_children(self, Node x, int i):
         y = x.children[i]
         z = x.children[i + 1]
 
@@ -104,7 +117,7 @@ class BplusTree:
         # Delete the merged node z
         del z
 
-    def redistribute_key(self, x, i):
+    cdef void redistribute_key(self, Node x, int i):
         y = x.children[i]
         z = x.children[i + 1]
 
@@ -138,7 +151,7 @@ class BplusTree:
             # Update z
             z.n = self.t
 
-    def insert(self, k, v):
+    cdef void insert(self, object k, object v):
         if self.root.n == 2 * self.t - 1:
             s = Node(leaf=False)
             s.children.append(self.root)
@@ -148,12 +161,12 @@ class BplusTree:
         else:
             self.insert_non_full(self.root, k, v)
 
-    def remove(self, k):
-        x = self.root
-        found = False
+    cdef void remove(self, object k):
+        cdef Node x = self.root
+        cdef bool found = False
 
         while x is not None:
-            i = 0
+            cdef int i = 0
             while i < x.n and k > x.keys[i]:
                 i += 1
 
@@ -177,8 +190,8 @@ class BplusTree:
         x.n -= 1
 
         if x.n < self.t and x.parent is not None:
-            sibling_index = -1
-            sibling = None
+            cdef int sibling_index = -1
+            cdef sibling = None
             if i != 0:
                 sibling_index = i - 1
                 sibling = x.parent.children[sibling_index]
@@ -198,16 +211,16 @@ class BplusTree:
                     self.root = x
                     del x.parent
 
-    def search(self, k):
-        x = self.root
+    cdef SearchResult search(self, object k):
+        cdef Node x = self.root
         while not x.leaf:
-            i = 0
+            cdef int i = 0
             while i < x.n and k > x.keys[i]:
                 i += 1
             x = x.children[i]  # Continue down the tree until reaching a leaf node
 
         # Now x is a leaf node, perform the search on this node
-        i = 0
+        cdef int i = 0
         while i < x.n and k > x.keys[i]:
             i += 1
         if i < x.n and k == x.keys[i]:

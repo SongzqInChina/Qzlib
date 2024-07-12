@@ -1,3 +1,9 @@
+cdef extern from "vector":
+    ctypedef vector[object] vector
+
+cdef extern from "string":
+    ctypedef string string
+
 cdef extern from "method.cpp":
     ctypedef struct Node:
         bint leaf
@@ -6,7 +12,7 @@ cdef extern from "method.cpp":
         vector[Value] values
         vector[Node*] children
 
-    ctypedef struct SearchResult:
+    ctypedef struct SearchResult[T]:
         T result
         bint iserror
         string error_message
