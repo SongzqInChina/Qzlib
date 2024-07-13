@@ -23,7 +23,7 @@ import time
 import timeit
 import numpy as np
 from decimal import Decimal
-from cpp import BplusTree
+from bplustree import BplusTree
 
 tree = BplusTree(5)
 for i in range(100):

@@ -1,22 +1,25 @@
+# cython: language_level=3
+
+
 cdef class Node:
-    cdef bool leaf
+    cdef bint leaf
     cdef int n
     cdef list keys
     cdef list values
     cdef list children
 
-    cdef void __cinit__(self, leaf=True):
+    def __cinit__(self, leaf=True):
         self.leaf = leaf
         self.n = 0
         self.keys = []
         self.values = []
         self.children = []
 
-    cdef void __del__(self):
+    def __del__(self):
         for child in self.children:
             del child
 
-    cdef str __str__(self):
+    def __str__(self):
         if self.leaf:
             return f"Leaf Node({dict(zip(self.keys, self.values))})"
         else:
@@ -25,20 +28,20 @@ cdef class Node:
 
 cdef class SearchResult:
     cdef object result
-    cdef bool iserror 
+    cdef bint iserror
     cdef str error_message
 
-    cdef void __cinit__(self, result=None, iserror=False, str error_message=""):
+    def __cinit__(self, result=None, iserror=False, error_message=""):
         self.result = result
         self.iserror = iserror
         self.error_message = error_message
 
 
-class BplusTree:
+cdef class BplusTree:
     cdef Node root
     cdef int t
 
-    cdef void __cinit__(self, int t):
+    def __cinit__(self, t: int):
         self.root: Node = Node()
         self.t: int = t
 
@@ -163,10 +166,9 @@ class BplusTree:
 
     cdef void remove(self, object k):
         cdef Node x = self.root
-        cdef bool found = False
-
+        cdef bint found = False
+        cdef int i = 0
         while x is not None:
-            cdef int i = 0
             while i < x.n and k > x.keys[i]:
                 i += 1
 
@@ -189,9 +191,11 @@ class BplusTree:
         x.values.pop(i)
         x.n -= 1
 
+        cdef int sibling_index = -1
+        cdef sibling = None
+
         if x.n < self.t and x.parent is not None:
-            cdef int sibling_index = -1
-            cdef sibling = None
+
             if i != 0:
                 sibling_index = i - 1
                 sibling = x.parent.children[sibling_index]
@@ -213,14 +217,14 @@ class BplusTree:
 
     cdef SearchResult search(self, object k):
         cdef Node x = self.root
+        cdef int i = 0
         while not x.leaf:
-            cdef int i = 0
             while i < x.n and k > x.keys[i]:
                 i += 1
             x = x.children[i]  # Continue down the tree until reaching a leaf node
 
         # Now x is a leaf node, perform the search on this node
-        cdef int i = 0
+        i = 0
         while i < x.n and k > x.keys[i]:
             i += 1
         if i < x.n and k == x.keys[i]:
