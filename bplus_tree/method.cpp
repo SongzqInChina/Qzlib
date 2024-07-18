@@ -1,6 +1,9 @@
 #include <vector>
 #include <iostream>
 
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+
 template<typename Key, typename Value>
 struct Node {
     bool leaf = true;
@@ -320,29 +323,43 @@ template<typename Key, typename Value>
 SearchResult<Value> BplusTree<Key, Value>::search(const Key& k) {
     // Start from the root and traverse down to find the key
     Node<Key, Value>* x = root;
-
-    while (x != nullptr) {
-        int i = 0;
-        // Traverse through the keys in the current node
+    int i = 0;
+    while(!x->leaf){
         while (i < x->n && k > x->keys[i]) {
             i++;
         }
-        
-        // If the key is found in the current node
-        if (i < x->n && k == x->keys[i]) {
-            return SearchResult(x->values[i]); // Return the associated value
-        }
-
-        // If the current node is a leaf and the key is not found, return default-constructed value
-        if (x->leaf) {
-            return SearchResult(true, "Key not found in the tree."); // Return default-constructed value of type Value
-        }
-
-        // Move to the next node
         x = x->children[i];
     }
-
-    // If we exit the loop without finding the key, it means the key is not in the tree
-    return SearchResult(true, "Key not in the tree."); // Return default-constructed value of type Value
+    i = 0;
+    while(i < x->n && k > x->keys[i]){
+        i++;
+    }
+    if (i < x->n && k == x->keys[i]) {
+        return SearchResult<Value>(true, x->values[i]);
+    } else {
+        return SearchResult<Value>(false, Value());
+    }
 }
 
+namespace py = pybind11;
+
+template<typename K, typename V>
+PYBIND11_MODULE_TPL(bplustree, m, K, V) {
+    py::class_<BplusTree<K, V>>(m, "BPlusTree")
+        .def(py::init<int>())
+        .def("insert", &BplusTree<K, V>::insert, py::arg("key"), py::arg("value"))
+        .def("remove", &BplusTree<K, V>::remove, py::arg("key"))
+        .def("search", [](BplusTree<K, V>& tree, K key) -> py::object {
+            auto result = tree.search(key);
+            if(result.iserror) {
+                throw std::runtime_error(result.error_message);
+            }
+            return result.result;
+        }, py::arg("key"));
+}
+
+// To use this template module, you would call it like this in your main C++ file:
+// #include "bplustree.h"
+// PYBIND11_PLUGIN(bplustree) {
+//     return bplustree<py::object, py::object>();
+// }

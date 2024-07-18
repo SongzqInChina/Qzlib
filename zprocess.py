@@ -110,12 +110,24 @@ def find_processes(name):
     return objs
 
 
-def NAME_killPrcess(ProcessName):
-    cmd(f"taskkill /f /im {ProcessName}")
+def kill_process_by_name(process_name):
+    ps_list = find_processes(process_name)
+    for i in ps_list:
+        try:
+            i.terminate()
+            i.wait()
+        except psutil.NoSuchProcess:
+            continue
 
 
-def PID_killPrcess(pid: int):
-    cmd(f"taskkill /f /pid {pid}")
+def kill_process_by_pid(pid: int):
+    if pid in psutil.pids():
+        try:
+            ps = psutil.Process(pid)
+            ps.terminate()
+            ps.wait()
+        except psutil.NoSuchProcess:
+            return False
 
 
 def to_info(ps: tuple[CProcess, ...]):

@@ -61,3 +61,24 @@ def get_pairs_by_value(dic, value, reverse=False):
     """
     pairs = [(k, v) for k, v in dic.items() if v == value]
     return sorted(pairs, key=lambda x: x[0], reverse=reverse)
+
+
+class AttrDict:
+    def __init__(self, **kwargs):
+        object.__setattr__(self, "_dict", kwargs)
+
+    def __getattr__(self, item):
+        return self[item]
+
+    def __setattr__(self, key, value):
+        self[key] = value
+
+    def __getitem__(self, item):
+        return self._dict[item]
+
+    def __setitem__(self, key, value):
+        self._dict[key] = value
+
+    @property
+    def get_dict(self):
+        return self._dict

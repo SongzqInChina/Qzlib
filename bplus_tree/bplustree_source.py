@@ -1,3 +1,8 @@
+import inspect
+import queue
+import threading
+
+
 class Node:
     def __init__(self, leaf=True):
         self.leaf = leaf
@@ -16,6 +21,29 @@ class Node:
         else:
             return f"Internal Node({dict(zip(self.keys, [child.__str__() for child in self.children]))})"
 
+    def to_dict(self):
+        root = {
+            'keys': self.keys,
+            'values': self.values,
+            'leaf': self.leaf,
+            'n': self.n,
+            'children': [
+                i.to_dict() for i in self.children
+            ]
+        }
+
+    @classmethod
+    def from_dict(cls, bp_dict: dict):
+        node = cls()
+        node.keys, node.values = bp_dict['keys'], bp_dict['values']
+        node.leaf = bp_dict['leaf']
+        node.n = bp_dict['n']
+
+        node.children = []
+
+        for i in range(len(bp_dict['children'])):
+            node.children.append(cls.from_dict(bp_dict['children'][i]))
+
 
 class SearchResult:
     def __init__(self, result=None, iserror=False, error_message=""):
@@ -24,7 +52,7 @@ class SearchResult:
         self.error_message = error_message
 
 
-class BplusTree:
+class BplusTree_t:
     def __init__(self, t):
         self.root = Node()
         self.t = t
@@ -59,6 +87,7 @@ class BplusTree:
 
         if x.leaf:
             while i >= 0 and k < x.keys[i]:
+                print(x.keys(), i)
                 x.keys.insert(i + 1, x.keys[i])
                 x.values.insert(i + 1, x.values[i])
                 i -= 1
@@ -214,3 +243,61 @@ class BplusTree:
             return SearchResult(result=x.values[i])
         else:
             return SearchResult(result=None)  # Key not found
+
+
+class BplusTree:
+    def __init__(self, bp_tree: BplusTree_t | BplusTree | None = None):
+        if bp_tree is None:
+            bp_tree = BplusTree_t(5)
+        self.bp_tree = bp_tree
+        self.queue = queue.Queue()
+        self.event = threading.Event()
+
+        self.thread = threading.Thread(
+            target=self._process_loop,
+            args=(self.event,)
+        )
+        self.thread.start()
+
+    def close(self):
+        if self.thread.is_alive():
+            self.event.set()
+            self.thread.join()
+
+
+    def _process_loop(self, event: threading.Event):
+        while event.is_set():
+            try:
+                operate = self.queue.get(timeout=0.3)
+                if operate['Operate'] == 'insert':
+                    self.bp_tree.insert(operate['key'], operate['value'])
+
+                if operate['Operate'] == 'remove':
+                    self.bp_tree.remove(operate['key'])
+
+                self.queue.task_done()
+
+            except queue.Empty:
+                continue
+
+    def _submit(self, *args):
+        func = inspect.stack()[1].function
+        submit_mro = {"Operate": func}
+        if func == 'insert':
+            submit_mro['key'] = args[0]
+            submit_mro['value'] = args[1]
+
+        if func == 'remove':
+            submit_mro['key'] = args[0]
+
+        self.queue.put(submit_mro)
+
+    def insert(self, k, v):
+        self._submit(k, v)
+
+    def remove(self, k):
+        self._submit(k)
+
+    @property
+    def root(self):
+        return self.bp_tree.root

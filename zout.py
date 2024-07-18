@@ -2,8 +2,9 @@ import logging
 from decimal import Decimal
 from queue import Queue
 from typing import Callable
-
+import threading
 import simpleeval
+from .typefunc.dict import AttrDict
 
 zout_logger = logging.getLogger("SzQlib.zout")
 
@@ -130,7 +131,7 @@ class Cursor:
 
 
 class LocalCursor(Cursor):
-    def __init__(self, base_class: Cursor, row, col):
+    def __init__(self, base_class: Cursor, row=1, col=1):
         super().__init__(row, col)
         self.local_row = 0
         self.local_col = 0
@@ -170,142 +171,77 @@ class LocalCursor(Cursor):
         return self.local_col
 
 
-class Record:
-    title = None
-    fill_char = None
-    start_time = None
-    end_time = None
-    current = None
-    total = None
-    speed = None
-    eta = None
-    unit = None
-    bar = None
-    elapsed_time = None
-    line = None
-    formatter = None
-    running = None
-    stop_because = None
+class ProcessBar:
+    def __init__(
+            self, line=1, cursor: Cursor = Cursor,
+            current=None, total=None, bar_length=20,
+            full_char: str = '-', empty: str = ' ', format=None
+    ):
 
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+        if current is None:
+            current = 0
 
+        if format is None:
+            format = "{name} | {bar} eta {eta} {speed}"
 
-class _ProcessBarRequest:
-    """
-    内部类，用于向管理器发送操作请求
+        if total is None:
+            raise ValueError("total must be set")
 
-
-    形参 operate:
-        - 请求的操作，包括 ['update', 'delete', 'done', 'stop']
-        - update表示更新进度条，对应的operate_obj即为`current`，operate_for_obj应为`+`，value应是新完成的量；
-        - delete表示删除进度条，不检查后三个参数（
-        注：
-            删除后，其余的进度条会自动补足空位，如果想“强制停止”，需要使用`stop`操作
-        )
-        - done 表示结束进度条，并标识为正常完成，与`stop`对立，完成后的进度条，进度条部分会被设置成标题（如果没有更改format）
-        - stop 表示结束进度条，并标识为异常退出，与`done`对立，终止后的进度条，进度条部分会设置为红色“Error”（如果没有更改format）
-
-    形参 orign_object:
-        - 请求的进度条对象，应是管理器add_process_bar返回的整数id，通过这个id，管理器可以确定进度条位置并进行操作
-
-    形参 operate_obj:
-        - 指定对进度条的哪个对象进行操作
-
-    形参 operate_for_obj:
-        - 指定对进度条对象需要执行的操作，应为运算符
-
-    形参 value:
-        - 指定对进度条对象执行操作的操作值
-
-    比如：
-        对id为12345678进度条的current进行加操作，那么初始化应是这样的
-        ```python
-        ProcessBarRecord('update', 12345678, 'current', '+', 1)
-        ```
-    """
-
-    def __init__(self, operate, orign_object, operate_obj, operate_for_obj, value):
-        self.operate = operate
-        self.orign_object = orign_object
-        self.operate_obj = operate_obj
-        self.operate_for_obj = operate_for_obj
-        self.value = value
-
-    def __str__(self):
-        return f"{
-        dict
-            (
-            operate=self.operate,
-            orign_object=self.orign_object,
-            operate_obj=self.operate_obj,
-            operate_for_obj=self.operate_for_obj,
-            value=self.value
-        )
-        }"
-
-
-class BarFormatter:
-    def __init__(self, format_run, format_stop):
-        self.format_run_string = format_run
-        self.format_stop_string = format_stop
-
-    def format_run(self, record: Record):
-        return self.format_run_string.format(
-            title=record.title,
-            bar=record.bar,
-            current=record.current,
-            total=record.total,
-            speed=record.speed,
-            unit=record.unit,
-            eta=record.eta,
-            elapsed_time=record.elapsed_time
+        self.record = AttrDict(
+            name="",
+            bar="",
+            eta="",
+            speed="",
+            current=current,
+            total=total,
+            bar_length=bar_length,
+            full_char=full_char,
+            empty=empty,
+            format=format,
+            cursor=cursor,
+            line=line,
+            start_time=None,
+            end_time=None,
         )
 
-    def format_stop(self, record: Record):
-        return self.format_stop_string.format(
-            title=record.title,
-            bar=record.bar,
-            current=record.current,
-            total=record.total,
-            speed=record.speed,
-            unit=record.unit,
-            eta=record.eta,
-            elapsed_time=record.elapsed_time
-        )
+        self._start_time = time.time()
 
+    def update(self, current):
+        """Update the progress."""
+        self.record.current = current
+        self._update_bar()
 
-class MultilineProcessBar:
-    def __init__(self, cursor: Cursor):
-        self.process_bars = {}
-        self.cursor = cursor
-        self.operates = Queue()
+    def _update_bar(self):
+        """Calculate and display the progress bar."""
+        percentage = self.record.current / self.record.total
+        filled_length = int(self.record.bar_length * percentage)
+        bar = self.record.full_char * filled_length + self.record.empty * (self.record.bar_length - filled_length)
 
-    def update_main(self):
-        while True:
-            operate = self.operates.get()  # type: _ProcessBarRequest
-            if operate.operate == 'update':
-                process_bar_record = self.process_bars[operate.orign_object]
-                if hasattr(process_bar_record, operate.operate_obj):
-                    orign_value = getattr(process_bar_record, operate.operate_obj)
-                    target_value = simpleeval.simple_eval(f"{orign_value} {operate.operate_for_obj} {operate.value}")
-                    setattr(process_bar_record, operate.operate_obj, target_value)
-                else:
-                    zout_logger.debug("Bad Request:", operate)
+        elapsed_time = time.time() - self._start_time
+        eta = self._calculate_eta(percentage, elapsed_time)
 
-            if operate.operate == 'delete':
-                self.process_bars.pop(operate.orign_object)
+        self.record.bar = bar
+        self.record.eta = str(timedelta(seconds=int(eta)))
+        self.record.speed = f"{self.record.current / elapsed_time:.2f}/s"
 
-    def rewrite(self):
-        local = LocalCursor(self.cursor, 0, 0)
-        for record in self.process_bars.values():
-            if record.running:
-                local.print(record.formatter.format_run(record))
+        self._render()
 
-    def add_process_bar(self, line: int):
-        process_bar_record = Record(line=line)
-        id_bar = id(process_bar_record)
+    def _calculate_eta(self, percentage, elapsed_time):
+        """Calculate estimated time of arrival."""
+        if percentage == 0:
+            return 0
+        eta = (elapsed_time / percentage) * (1 - percentage)
+        return eta
 
-        self.process_bars[id_bar] = process_bar_record
+    def _render(self):
+        """Render the progress bar to the console."""
+        self.record.cursor.move(self.record.line, 1)
+        self.record.cursor.clear_now_line()
+        self.record.cursor.print(self.record.format.format(**self.record.get_dict), end='')
+        self.record.cursor.move(self.record.line, 1)
 
-        return id_bar
+    def finish(self):
+        """Mark the progress as finished."""
+        self.update(self.record.total)
+        self.record.end_time = time.time()
+

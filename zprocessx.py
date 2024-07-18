@@ -4,7 +4,7 @@ import time
 import psutil
 
 from .zprocess import CProcess as _CProcess
-from .zprocess import PID_killPrcess, NAME_killPrcess, ProcessInfo
+from .zprocess import kill_process_by_pid, kill_process_by_name, ProcessInfo
 
 
 class Xfunc:
@@ -25,7 +25,7 @@ class CProcess(Xfunc, _CProcess):
 class Process(Xfunc):
     @staticmethod
     def KillById(pid):
-        PID_killPrcess(pid)
+        kill_process_by_pid(pid)
 
     @staticmethod
     def killByName(name):

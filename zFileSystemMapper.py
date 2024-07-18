@@ -12,26 +12,30 @@ class File:
         if not isfile(file):
             raise FileNotFoundError(file)
         self._file = file
+    
+    def _check(self):
+        if not exists(self._file):
+            raise FileNotFoundError(self._file)
 
     @property
     def size(self):
-        assert exists(self._file)
+        self._check()
         return os.path.getsize(self._file)
 
     @property
     def data(self):
-        assert exists(self._file)
+        self._check()
         with open(self._file, 'rb') as f:
             return f.read()
 
     @property
     def name(self):
-        assert exists(self._file)
+        self._check()
         return os.path.basename(self._file)
 
     @property
     def fat(self):
-        assert exists(self._file)
+        self._check()
         return os.path.dirname(self._file)
 
     def __repr__(self):
