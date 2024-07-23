@@ -1,9 +1,11 @@
 import logging
+import msvcrt
+import sys
+import time
+from datetime import timedelta
 from decimal import Decimal
-from queue import Queue
 from typing import Callable
-import threading
-import simpleeval
+
 from .typefunc.dict import AttrDict
 
 zout_logger = logging.getLogger("SzQlib.zout")
@@ -21,10 +23,14 @@ def mapping(stream, in_min, in_max, out_min, out_max, rt_function: Callable = fl
 
 
 def get_foreground(r, g, b):
+    if not any((r, g, b)):
+        return ''  # 不需要定义颜色
     return f"\033[38;2;{r};{g};{b}m"
 
 
 def get_background(r, g, b):
+    if not any((r, g, b)):
+        return ''  # 不需要定义颜色
     return f"\033[48;2;{r};{g};{b}m"
 
 
@@ -76,6 +82,12 @@ class Cursor:
         self.row = row
         self.col = col
 
+    def flush(self):
+        row, col = get_base_cursor()
+        if row is None:
+            raise RuntimeError("刷新坐标失败")
+        self.row, self.col = row, col
+
     @property
     def line(self):
         return self.row
@@ -108,6 +120,10 @@ class Cursor:
         self.col = 1
         print("\033[2K", end='')
 
+    def clear(self):
+        print('\033[2J')
+        self.move(1, 1)
+
     def print(self, *values, sep=' ', end='\n', file=None, flush=False):
         line_count = 0
         for value in values:
@@ -128,6 +144,12 @@ class Cursor:
                 self.col = len(value_str)
         self.row += line_count
         print(*values, sep=sep, end=end, file=file, flush=flush)
+
+    def to_local(self):
+        return LocalCursor(self)
+
+    def __str__(self):
+        return f"Cursor: row={self.row} col={self.col}"
 
 
 class LocalCursor(Cursor):
@@ -171,12 +193,50 @@ class LocalCursor(Cursor):
         return self.local_col
 
 
-class ProcessBar:
+def get_base_cursor():
+    # 发送请求光标位置的 ANSI 转义序列
+    sys.stdout.write("\033[6n")
+    sys.stdout.flush()
+
+    timeout = 3
+
+    start_time = time.time()
+    response = ""
+    while time.time() - start_time < timeout:
+        if msvcrt.kbhit():
+            char = msvcrt.getch().decode('utf-8')
+            if char == 'R':
+                break
+            response += char
+        time.sleep(0.01)  # 减少CPU占用
+    # 解析响应以获取光标位置
+    # \x1b[27;1
+    if response.startswith("\033["):
+        response = response.split('\033[')[1]
+        response = response.split(';')
+        response = tuple(map(int, response))
+        if len(response) == 2:
+            row, col = response
+            return row, col
+        return None, None
+    return None, None
+
+
+def get_cursor():
+    row, col = get_base_cursor()
+    if row is not None and col is not None:
+        return Cursor(row, col)
+    return None
+
+
+class ProgressBar:
     def __init__(
-            self, line=1, cursor: Cursor = Cursor,
-            current=None, total=None, bar_length=20,
+            self, name=None, current=None, total=None, line=1, cursor: LocalCursor | Cursor = get_cursor().to_local(),
+            bar_length=20,
             full_char: str = '-', empty: str = ' ', format=None
     ):
+        if cursor is None:
+            raise ValueError("cursor must be set")
 
         if current is None:
             current = 0
@@ -188,7 +248,7 @@ class ProcessBar:
             raise ValueError("total must be set")
 
         self.record = AttrDict(
-            name="",
+            name=name,
             bar="",
             eta="",
             speed="",
@@ -206,11 +266,6 @@ class ProcessBar:
 
         self._start_time = time.time()
 
-    def update(self, current):
-        """Update the progress."""
-        self.record.current = current
-        self._update_bar()
-
     def _update_bar(self):
         """Calculate and display the progress bar."""
         percentage = self.record.current / self.record.total
@@ -222,7 +277,7 @@ class ProcessBar:
 
         self.record.bar = bar
         self.record.eta = str(timedelta(seconds=int(eta)))
-        self.record.speed = f"{self.record.current / elapsed_time:.2f}/s"
+        self.record.speed = f"{self.record.current / elapsed_time if elapsed_time > 0 else 0:.2f}/s"
 
         self._render()
 
@@ -240,8 +295,49 @@ class ProcessBar:
         self.record.cursor.print(self.record.format.format(**self.record.get_dict), end='')
         self.record.cursor.move(self.record.line, 1)
 
+    def update(self, current):
+        """Update the progress."""
+        self.record.current = current
+        self._update_bar()
+
+    def add(self, current):
+        self.update(self.record.current + current)
+
     def finish(self):
         """Mark the progress as finished."""
         self.update(self.record.total)
         self.record.end_time = time.time()
+        self.record.cursor.move(self.record.line, 0)
+        self.record.cursor.clear_now_line()
+        self.record.cursor.print()
 
+
+class MultiProgressBar:
+    def __init__(self):
+        self.records = []  # type: list[ProgressBar]
+
+    def add_ProgressBar(self, process_bar: ProgressBar):
+        length = len(self.records)
+        self.records.append(process_bar)
+        self.records[length].record.line = length + 1
+        return length
+
+    def update(self, index, current):
+        self.records[index].update(current)
+
+    def finish(self, index):
+        self.records[index].finish()
+
+    def finish_all(self):
+        for record in self.records:
+            record.finish()
+
+
+def create_mock_progress_bar(
+        name=None,
+        total=None,
+        line=1,
+        cursor: LocalCursor | Cursor = get_cursor().to_local(),
+        bar_length=20, full_char: str = '-'
+):
+    pass

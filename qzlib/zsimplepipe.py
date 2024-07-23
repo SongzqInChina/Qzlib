@@ -4,7 +4,8 @@ import os
 import queue
 from collections import deque
 
-from . import zstruct, zthread, zjson
+from . import zthread, zjson
+
 
 # module end
 

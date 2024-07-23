@@ -374,7 +374,7 @@ def JsonEncrypt(file, key, iv=None):
     :param iv:
     :return:
     """
-    from .zencrypt import encrypt
+    from .zencrypt.aes import encrypt
     data = JsonGet(file)
     JsonClear(file)
     dstr = encode(data).encode('utf-8')
@@ -382,7 +382,7 @@ def JsonEncrypt(file, key, iv=None):
 
 
 def JsonDecrypt(file, key, iv=None):
-    from .zencrypt import decrypt
+    from .zencrypt.aes import decrypt
     data = JsonGet(file, 'data')  # 读取data项
     data = decrypt(data, key, iv)  # 解密
     JsonClear(file)
@@ -390,7 +390,7 @@ def JsonDecrypt(file, key, iv=None):
 
 
 def JsonDecryGet(file, key, iv=None):
-    from .zencrypt import aes_decrypt
+    from .zencrypt.aes import decrypt as aes_decrypt
     data = JsonGet(file, 'data')
     return aes_decrypt(data, key, iv)
 

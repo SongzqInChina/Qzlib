@@ -1,4 +1,6 @@
 import logging
+import os
+import sys
 
 from . import zout, ztime
 
@@ -8,6 +10,7 @@ class _LogFormat(logging.Formatter):
         message = record.getMessage()
         error_level = record.levelname
         data_time = ztime.time.asctime()
+        color_head = ''
         if error_level == "ERROR":
             color_head = zout.get_color_head(255, 0, 0)
         if error_level == "WARNING":
@@ -21,12 +24,20 @@ class _LogFormat(logging.Formatter):
         if error_level == "NOTSET":
             color_head = zout.get_color_init()
 
-        return f"Module {record.module} at '{data_time}' Logging: [{error_level}] - {message}" + zout.get_color_init()
+        return color_head + f"Module {record.module} at '{data_time}' Logging: [{error_level}] - {message}" + zout.get_color_init()
 
 
 _lib_logging_root = logging.getLogger()
-_Formatter = _LogFormat()
+Formatter = _LogFormat()
 _lib_logging_root.setLevel(logging.DEBUG)
+
+version = "0.0.1"
+
+_lib_logging_root.debug("--Qzlib-------------------------")
+_lib_logging_root.debug(f"| version:\t{version}")
+_lib_logging_root.debug(f"| platform:\t{os.name}")
+_lib_logging_root.debug(f"| python:\t{sys.version}")
+_lib_logging_root.debug(f"--log--------------------------")
 
 
 def management_logger():

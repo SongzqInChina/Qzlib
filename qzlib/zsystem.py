@@ -9,7 +9,6 @@ from win32com import client
 
 from .zprocessx import Process, CProcess
 
-
 zsystem_logger = logging.getLogger("SzQlib.zsystem")
 
 
@@ -317,9 +316,6 @@ class Runtime:
     def execute(self, command):
         return CProcess(psutil.Popen(command).pid)
 
-    @classmethod
-    def __getruntime(cls):
-        return cls()
 
     @classmethod
     def getRuntime(cls):

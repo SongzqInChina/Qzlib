@@ -67,7 +67,7 @@ def unpack(data_type, data):
 def pack_anylenght(data, lenght=16, max_lenght=False):
     data_type = type(data)
     if data_type == str:
-        return encrypt.pad(data.encode(), lenght)
+        return zencrypt.pad(data.encode(), lenght)
     if data_type == int:
         x = copy.copy(data)
         data_bytes = typefunc.int_to_bytes(x, lenght, "little")
@@ -77,7 +77,7 @@ def pack_anylenght(data, lenght=16, max_lenght=False):
     if data_type == bytes:
         if len(data) <= max_lenght:
             return data
-        return encrypt.pad(data, lenght)
+        return zencrypt.pad(data, lenght)
     if data_type == float:
         int_num, float_int_num = tuple(map(int, str(data).split('.')[:2]))
 
@@ -98,7 +98,7 @@ def pack_anylenght(data, lenght=16, max_lenght=False):
             return result
         else:
             print(result)
-            return encrypt.pad(result, lenght)
+            return zencrypt.pad(result, lenght)
 
 
 def unpack_anylenght(data_type, data: bytes, data_lenght, max_lenght=False):
@@ -112,16 +112,16 @@ def unpack_anylenght(data_type, data: bytes, data_lenght, max_lenght=False):
         return data_int
 
     if data_type == str:
-        return encrypt.unpad(data).decode()
+        return zencrypt.unpad(data).decode()
 
     if data_type == bytes:
         if max_lenght:
             return data
-        return encrypt.unpad(data)
+        return zencrypt.unpad(data)
 
     if data_type == float:
-        data_offset = typefunc.index_offset.Offset(encrypt.unpad(data, data_lenght))
-        print(encrypt.unpad(data, data_lenght))
+        data_offset = typefunc.index_offset.Offset(zencrypt.unpad(data, data_lenght))
+        print(zencrypt.unpad(data, data_lenght))
         int_lenght = unpack_anylenght(int, data_offset.offset(8), 2048, True)
         print("Int Lenght:", int_lenght)
 
