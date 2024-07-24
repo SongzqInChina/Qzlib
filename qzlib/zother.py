@@ -1,7 +1,5 @@
 import inspect
 import logging
-import os
-from typing import Any
 
 # module end
 
@@ -12,7 +10,6 @@ class cglobalc:
     _init = False
 
     def __init__(self, error='N/A', **kwargs):
-        object.__setattr__(self, "_init", False)
         self._namesp = {}
         self._namesp = kwargs
         self.error = error
@@ -86,15 +83,6 @@ class FobjectEx:
 Fobject = FobjectEx()
 
 
-def _(): ...
-
-
-class Builtin_class:
-    module = os.__class__
-    builtin_function_or_method = os.close.__class__
-    function = _.__class__
-
-
 def get_all_arguments(func):
     argspec = inspect.getfullargspec(func)
     return argspec.args
@@ -136,10 +124,6 @@ class Struct(StructEx):
         return f"{self.__module__}.{self.__class__.__name__}({string})"
 
     __repr__ = __str__
-
-
-class forClass(Any):
-    pass
 
 
 def default_function(*args, **kwargs):
