@@ -1,7 +1,7 @@
 # git ignore
 .idea
 # idea directory
-qzlib/bplus_tree/__pycache__
+*__pycache__
 # pycache
 
 # test files
