@@ -6,7 +6,7 @@ from .zjson import *
 
 # module end
 
-zfilex_logger = logging.getLogger('SzQlib.zfilex')
+zfilex_logger = logging.getLogger(__name__)
 
 
 def property_class(*args, **kwargs):

@@ -5,6 +5,9 @@ import sys
 from . import zout, ztime
 
 
+# TODO: Improve the zout module
+
+
 class _LogFormat(logging.Formatter):
     def format(self, record):
         message = record.getMessage()
@@ -13,15 +16,15 @@ class _LogFormat(logging.Formatter):
         color_head = ''
         if error_level == "ERROR":
             color_head = zout.get_color_head(255, 0, 0)
-        if error_level == "WARNING":
+        elif error_level == "WARNING":
             color_head = zout.get_color_head(255, 255, 0)
-        if error_level == "INFO":
+        elif error_level == "INFO":
             color_head = zout.get_color_head(0, 255, 0)
-        if error_level == "DEBUG":
+        elif error_level == "DEBUG":
             color_head = zout.get_color_head(0, 0, 255)
-        if error_level == "CRITICAL":
+        elif error_level == "CRITICAL":
             color_head = zout.get_color_head(255, 0, 255)
-        if error_level == "NOTSET":
+        elif error_level == "NOTSET":
             color_head = zout.get_color_init()
 
         return color_head + f"Module {record.module} at '{data_time}' Logging: [{error_level}] - {message}" + zout.get_color_init()
@@ -46,33 +49,34 @@ def management_logger():
 
 from . import (
     zdatabase,
-    zdatabaseX,
-    zencrypt,
-    zfile,
-    zfilex,
-    zjson,
-    zlibcon,
-    znetwork,
-    znamepipe,
-    zother,
-    zpath,
-    zprocess,
-    zprocessx,
-    zreg,
-    zsystem,
-    zshell,
-    zthread,
-    typefunc,
-    zwindow,
-    zstruct,
-    sample,
-    zFileSystemMapper,
-    zplugins_loader,  # TODO: This module is not finished
-    zauth,
-    zsimplepipe,
-    zhash,
-    zimport_func,
-    zencryio
+    # zdatabaseX,  # TODO: This module is not finished
+    zencrypt,  # finished
+    zfile,  # finished
+    zfilex,  # finished
+    zjson,  # finished
+    zlibcon,  # finished (dynamic updates)
+    znetwork,  # finished
+    znamepipe,  # finished
+    zother,  # finished
+    zpath,  # finished
+    zprocess,  # finished
+    zprocessx,  # finished
+    zreg,  # finished
+    zsystem,  # finished
+    zshell,  # finished
+    zthread,  # finished
+    typefunc,  # finished
+    zwindow,  # finished  # Warning: This module has not undergone comprehensive testing
+    zstruct,  # finished
+    sample,  # finished
+    zFileSystemMapper,  # finished
+    # zplugins_loader,  # TODO: This module is not finished
+    zauth,  # finished
+    zsimplepipe,  # finished
+    zhash,  # finished
+    zimport_func,  # finished
+    zencryio,  # finished
+    data_structure  # finished
 )
 
 _lib_logging_root.debug("All modules are ready.")

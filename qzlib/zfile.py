@@ -3,7 +3,8 @@ import logging
 import win32api
 import win32con
 
-zfile_logger = logging.getLogger("SzQlib.zfile")
+zfile_logger = logging.getLogger(__name__)
+
 
 # module end
 

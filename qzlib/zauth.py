@@ -4,7 +4,7 @@ import os
 from . import zdatabase, typefunc, zhash as shash
 
 
-zauth_logger = logging.getLogger("SzQlib.zauth")
+zauth_logger = logging.getLogger(__name__)
 
 
 class SimpleUserPasswdManager:

@@ -5,7 +5,7 @@ from typing import Any
 
 # module end
 
-zother_logger = logging.getLogger("SzQlib.zother")
+zother_logger = logging.getLogger(__name__)
 
 
 class cglobalc:

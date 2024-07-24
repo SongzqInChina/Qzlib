@@ -9,7 +9,7 @@ from .zlibcon import *
 from .zpath import *
 
 
-zdatabasex_logger = logging.getLogger("SzQlib.zdatabasex")
+zdatabasex_logger = logging.getLogger(__name__)
 
 
 

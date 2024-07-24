@@ -2,14 +2,15 @@ import logging
 
 # module end 我们会将模块的很多常量慢慢集成到这里
 
-zlibcon_logger = logging.getLogger("SzQlib.zlibcon")
+zlibcon_logger = logging.getLogger(__name__)
 
 DBX_FUNC_TYPE_MRO = 0x1001
 DBX_FUNC_TYPE_GET = 0x1002
 ETY_TYPE_KEY = 0x1003
 ETY_TYPE_IV = 0x1004
 
-ZOUT_FORMAT_PIP = "{bar:40} {current}/{total} {unit} {speed} eta {eta}"
+UNKNOWN = "Unknown"
+
 
 _link_constants = []
 

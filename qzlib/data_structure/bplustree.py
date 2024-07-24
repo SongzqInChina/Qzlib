@@ -1,6 +1,7 @@
 import inspect
 import queue
 import threading
+import time
 
 
 class Node:
@@ -242,11 +243,11 @@ class BplusTree_t:
         if i < x.n and k == x.keys[i]:
             return SearchResult(result=x.values[i])
         else:
-            return SearchResult(result=None)  # Key not found
+            return SearchResult(None, True, "Key not found")  # Key not found
 
 
 class BplusTree:
-    def __init__(self, bp_tree: BplusTree_t | BplusTree | None = None):
+    def __init__(self, bp_tree: BplusTree_t | object | None = None):
         if bp_tree is None:
             bp_tree = BplusTree_t(5)
         self.bp_tree = bp_tree
@@ -259,11 +260,18 @@ class BplusTree:
         )
         self.thread.start()
 
+    def wait(self, timeout=None):
+        start_time = time.time()
+        while not self.queue.empty():
+            if timeout is not None and time.time() - start_time > timeout:
+                raise TimeoutError()
+            time.sleep(0.02)
+        return
+
     def close(self):
         if self.thread.is_alive():
             self.event.set()
             self.thread.join()
-
 
     def _process_loop(self, event: threading.Event):
         while event.is_set():
@@ -301,3 +309,23 @@ class BplusTree:
     @property
     def root(self):
         return self.bp_tree.root
+
+    def range_query(self, start_key, end_key):
+        results = []
+        self._range_query_recursive(self.root, start_key, end_key, results)
+        return results
+
+    def _range_query_recursive(self, node, start_key, end_key, results):
+        if node is None or (not node.leaf and node.keys and start_key < node.keys[0]):
+            return
+
+        i = 0
+        while i < node.n and node.keys[i] <= end_key:
+            if start_key <= node.keys[i]:
+                results.append((node.keys[i], node.values[i]))
+            i += 1
+
+        # Traverse children if it's an internal node
+        if not node.leaf:
+            for i in range(node.n + 1):
+                self._range_query_recursive(node.children[i], start_key, end_key, results)

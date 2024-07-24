@@ -2,7 +2,8 @@ import logging
 
 from .zpath import *
 
-zfilesystemmapper_logger = logging.getLogger('SzQlib.zfilesystemmapper')
+zfilesystemmapper_logger = logging.getLogger(__name__)
+
 
 # module end
 
@@ -12,7 +13,7 @@ class File:
         if not isfile(file):
             raise FileNotFoundError(file)
         self._file = file
-    
+
     def _check(self):
         if not exists(self._file):
             raise FileNotFoundError(self._file)
@@ -64,7 +65,10 @@ class FileSystemMapper:  # 把文件系统（文件夹）映射成字典
                 mkfile(key)
             else:
                 raise FileExistsError(key)
-        elif value == self:
+        elif isinstance(value, str):
+            with open(key, 'w') as f:
+                f.write(value)
+        elif value == self or isinstance(value, dict):
             if not exists(key):
                 mkdir(key)
             else:

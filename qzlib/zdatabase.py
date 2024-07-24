@@ -2,7 +2,7 @@ import fnmatch
 
 from .zfilex import *
 
-zdatabase_logger = logging.getLogger("SzQlib.zdatabase")
+zdatabase_logger = logging.getLogger(__name__)
 
 
 class CannotFindError(BaseException):
